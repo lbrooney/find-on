@@ -27,6 +27,3 @@ Neither the URLs nor the search results are transmitted or stored anywhere else,
 
 ## Changes to this policy
 This Privacy Policy may be updated from time to time for any reason. You are advised to consult this Privacy Policy regularly for any changes, as continued use is deemed approval of all changes.
-
-## Contact
-Please direct any questions about this policy or this extension's compliance with this policy to adeel.hassan93@gmail.com.
