@@ -128,10 +128,16 @@ function render(userClicked = false) {
 			const posts = searchResults.posts;
 			state.lastResult.posts = posts;
 			state.lastResult.url = originalUrl;
-			displayPosts(posts, originalUrl);
-			setUiState('SEARCH_END', {
-				name: (!exactMatch ? 'exact' : 'non-exact'),
-				num: searchResults.other
+			// Fetch HN hits and merge into list
+			import('./hn.js').then(mod => {
+				mod.fetchHnHits(originalUrl)
+					.then(hits => {
+						const hnPosts = mod.convertHitsToPostObjects(hits);
+						const combined = posts.concat(hnPosts);
+						state.lastResult.posts = combined;
+						displayPosts(combined, originalUrl);
+					})
+					.catch(console.log);
 			});
 		})
 		.catch(e => onRequestError(e, userClicked));
@@ -221,6 +227,17 @@ function displayPosts(posts, url = '') {
 			catch (e) {
 				p.data.age = '?';
 			}
+			try {
+				p.data.localDate = new Date(p.data.created_utc * 1000).toLocaleString(undefined, {
+					year: 'numeric',
+					month: 'short',
+					day: 'numeric',
+					hour: 'numeric',
+					minute: '2-digit'   // omit seconds
+				  });
+			} catch (e) {
+				p.data.localDate = '';
+			}
 		});
 	}
 	let sortedPosts = sortPosts(posts, state.opts.orderBy, state.opts.desc);
@@ -243,6 +260,8 @@ function messageTemplate(msg) {
 		return;
 	}
 	document.getElementById('tFrame').contentWindow.postMessage(msg, '*');
+	// activate tooltips immediately
+	$(function () { $('[data-toggle="tooltip"]').tooltip({ delay: {show: 0, hide: 0} }); });
 }
 
 function setSearchDefaults(opts) {
@@ -326,4 +345,3 @@ function fetchDomHandles() {
 		}
 	};
 }
-

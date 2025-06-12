@@ -2,7 +2,7 @@ import { clearCache, getTabById, getOptions, ignoreRejection } from './chrome.js
 import { processUrl, removeQueryString, isYoutubeUrl } from './url.js';
 import { findOnReddit } from './reddit.js';
 import { bgOptions } from './query.js';
-
+import { fetchHnHits, convertHitsToPostObjects } from './hn.js';
 
 const BADGE_COLORS = {
 	error: '#DD1616',
@@ -62,7 +62,6 @@ async function tabActivatedListener(activeInfo) {
 	return autoSearch(tabId, tab.url);
 }
 
-
 async function autoSearch(tabId, url) {
 	if (!isAllowed(removeQueryString(url))) {
 		return;
@@ -71,6 +70,7 @@ async function autoSearch(tabId, url) {
 	const exactMatch = bgOpts.search.exactMatch && !isYt;
 	const urlToSearch = processUrl(url, bgOpts.search.ignoreQs, isYt);
 	let posts;
+	let hnPosts = [];
 	if (exactMatch) {
 		posts = await searchExact(tabId, urlToSearch);
 		if (bgOpts.autorun.retryExact && posts.length === 0) {
@@ -87,7 +87,13 @@ async function autoSearch(tabId, url) {
 			await searchExact(tabId, urlToSearch);
 		}
 	}
-	return setResultsBadge(tabId, posts);
+	try {
+		const hnHits = await fetchHnHits(url);
+		hnPosts = convertHitsToPostObjects(hnHits);
+	} catch (e) {
+		console.log('HN fetch error', e);
+	}
+	return setResultsBadge(tabId, posts, hnPosts);
 }
 
 const BG_RETRY_INTERVAL = 5e3;
@@ -158,17 +164,19 @@ function numToBadgeText(n) {
 	}
 }
 
-async function setResultsBadge(tabId, posts) {
+async function setResultsBadge(tabId, redditPosts = [], hnPosts = []) {
 	const color = BADGE_COLORS.success;
-	if (!posts || posts.length === 0) {
+	const totalPosts = redditPosts.length + hnPosts.length;
+	if (totalPosts === 0) {
 		return setBadge(tabId, '0', color);
 	}
 	if (bgOpts.autorun.badgeContent === 'num_comments') {
-		const numComments = posts.reduce((acc, p) => acc + p.data.num_comments, 0);
-		return setBadge(tabId, `${numToBadgeText(numComments)}`, color);
+		const numCommentsReddit = redditPosts.reduce((a, p) => a + p.data.num_comments, 0);
+		const numCommentsHn = hnPosts.reduce((a, p) => a + p.data.num_comments, 0);
+		const totalComments = numCommentsReddit + numCommentsHn;
+		return setBadge(tabId, `${numToBadgeText(totalComments)}`, color);
 	} else {
-		const numPosts = posts.length;
-		return setBadge(tabId, `${numToBadgeText(numPosts)}`, color);
+		return setBadge(tabId, `${numToBadgeText(totalPosts)}`, color);
 	}
 }
 

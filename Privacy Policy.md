@@ -9,16 +9,20 @@ This includes chrome:// and file:// URLs.
 
 ## Data usage
 The URLs accessed are used in the following ways
-- To make an API request to Reddit to get search results. The API endpoints used are:
-	- https://api.reddit.com/search.json (non-exact search)
-	- https://api.reddit.com/info.json (exact search)
-	- https://api.reddit.com/duplicates (for every search).
+- To query public APIs for discussion threads:
+	- Reddit:
+		- https://api.reddit.com/search.json (non-exact search)
+		- https://api.reddit.com/info.json (exact search)
+		- https://api.reddit.com/duplicates (for every search)
+	- Hacker News:
+		- https://hn.algolia.com/api/v1/search (search by URL)
+
 - To store the URL and the corresponding search results locally via Chrome's Storage API, if caching is enabled.
 
 Neither the URLs nor the search results are transmitted or stored anywhere else, or used in any other way.
 
 ## Security
-- The API requests to Reddit are made over HTTPS.
+- All API requests (Reddit & Hacker News) are made over HTTPS.
 - The Chrome Storage area where URLs and search results are cached is not encrypted (as stated here: https://developer.chrome.com/apps/storage).
 
 ## Changes to this policy

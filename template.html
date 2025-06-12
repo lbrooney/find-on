@@ -3,14 +3,7 @@
   <div class="container-fluid">
     <div class="row num-results-container">
       <div class="num-results col-xs-6 text-left">
-        <span class="pre">{{numPosts}} {{#pluralize "result" numPosts}}{{/pluralize}}  |  </span>
-        <a href="https://{{#if oldReddit}}old.{{/if}}reddit.com/submit?url={{url}}
-        {{#if numPosts}}
-          &resubmit=true">repost to Reddit
-        {{else}}
-          ">post to Reddit
-        {{/if}}
-        <span class="glyphicon glyphicon-share-alt"></span></a>
+        <span class="pre">{{numPosts}} {{#pluralize "result" numPosts}}{{/pluralize}}</span>
       </div>
       <div class="col-xs-6">
         <span class="pull-right">
@@ -40,24 +33,46 @@
             </td>
             <td class="col-md-8 title">
                 <span>
-                  <a href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com{{data.permalink}}">
-                    <span class="post-title">{{data.title}}</span>
-                  </a>
+                  {{#ifEquals data.subreddit "Hacker News"}}
+                    <a href="https://news.ycombinator.com{{data.permalink}}">
+                      <span class="post-title">{{data.title}}</span>
+                    </a>
+                  {{else}}
+                    <a href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com{{data.permalink}}">
+                      <span class="post-title">{{data.title}}</span>
+                    </a>
+                  {{/ifEquals}}
                   <br/>
-                  <a href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com{{data.permalink}}">
-                    <span class="num-comments">
-                      {{data.num_comments}} {{#pluralize "comment" data.num_comments}}{{/pluralize}}
-                    </span>
-                  </a> | 
-                  <small class="post-details">
-                    submitted {{data.age}} ago by 
-                    <a class="pop" href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com/u/{{data.author}}">/u/{{data.author}}</a>
-                  </small>
+                  {{#ifEquals data.subreddit "Hacker News"}}
+                    <a href="https://news.ycombinator.com{{data.permalink}}">
+                      <span class="num-comments">
+                        {{data.num_comments}} {{#pluralize "comment" data.num_comments}}{{/pluralize}}
+                      </span>
+                    </a> | 
+                    <small class="post-details">
+                      submitted <span class="timeago" data-toggle="tooltip" title="{{data.localDate}}">{{data.age}} ago</span> by 
+                      <a class="pop" href="https://news.ycombinator.com/user?id={{data.author}}">{{data.author}}</a>
+                    </small>
+                  {{else}}
+                    <a href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com{{data.permalink}}">
+                      <span class="num-comments">
+                        {{data.num_comments}} {{#pluralize "comment" data.num_comments}}{{/pluralize}}
+                      </span>
+                    </a> | 
+                    <small class="post-details">
+                      submitted <span class="timeago" data-toggle="tooltip" title="{{data.localDate}}">{{data.age}} ago</span> by 
+                      <a class="pop" href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com/u/{{data.author}}">/u/{{data.author}}</a>
+                    </small>
+                  {{/ifEquals}}
                   <br/>
                 </span>
             </td>
             <td class="col-md-2 subreddit">
-              <a href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com/r/{{data.subreddit}}">/r/{{data.subreddit}}</a>
+              {{#ifEquals data.subreddit "Hacker News"}}
+                Hacker News
+              {{else}}
+                <a href="https://{{#if ../oldReddit}}old.{{/if}}reddit.com/r/{{data.subreddit}}">/r/{{data.subreddit}}</a>
+              {{/ifEquals}}
             </td>
           </tr>
         {{/each}}
@@ -76,6 +91,10 @@
 
   Handlebars.registerHelper('pluralize', function (str, n) {
     return `${str}${n != 1 ? 's' : ''}`;
+  });
+
+  Handlebars.registerHelper('ifEquals', function (arg1, arg2, options) {
+    return (arg1 === arg2) ? options.fn(this) : options.inverse(this);
   });
 
   let template = Handlebars.compile($('#search-results-template').html());
