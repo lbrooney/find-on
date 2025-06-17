@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.7.1:
+- Add build script
+- Support caching on HN results
+- Fix "No results found" message not showing in popup
+- Update options page text
+
 ## v1.7.0:
 - Hacker News integration
 
