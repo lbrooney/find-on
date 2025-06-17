@@ -8,7 +8,7 @@
 	<link rel="stylesheet" type="text/css" href="css/common.css">
 	<link rel="stylesheet" type="text/css" href="css/options.css">
 	<!-- title -->
-	<title>Options - Find on Reddit</title>
+	<title>Options - Find on - Reddit + Hacker News</title>
 </head>
 
 <body class="night-mode">
@@ -95,14 +95,14 @@
 					<div class="row option-checkbox-container">
 						<input class="col-xs-1 option-checkbox" type="checkbox" id="exact">
 						<div class="option-checkbox-text col-xs-11">
-							Exact match
+							Exact match (Reddit only)
 						</div><br /><br />
 						<div class="notes">
 							<p>Note 1: If checked, <code>xyz.com</code> will <u>not</u> match <code>xyz.com/abc</code>,
 								<code>xyz.com/abc/def</code> etc.
 							</p>
 							<p>Note 2: Uses Reddit API's "info" endpoint instead of the "search" endpoint and is
-								therefore faster and more reliable.</p>
+								therefore faster and more reliable. HN search is always fuzzy.</p>
 						</div>
 					</div>
 					<!-- ignore query-string -->
@@ -186,8 +186,8 @@
 					<div class="row option-select-container">
 						<div class="option-select-text col-xs-3">Number to show in extension icon</div>
 						<select id="badge-content" class="select col-xs-2">
-							<option class="badge-content-option" value="num_posts">total posts</option>
-							<option class="badge-content-option" value="num_comments">total comments</option>
+							<option class="badge-content-option" value="num_posts">total posts (Reddit + HN)</option>
+							<option class="badge-content-option" value="num_comments">total comments (Reddit + HN)</option>
 						</select>
 					</div>
 				</div>
