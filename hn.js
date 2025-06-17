@@ -1,4 +1,7 @@
 // Shared Hacker News API helper used in popup.js and background.js
+import { searchCache, cache, getOptions } from './chrome.js';
+import { DEFAULT_CACHE_PERIOD_MINS } from './query.js';
+
 export const HN_API_URL = 'https://hn.algolia.com/api/v1/search';
 export const HN_URL = 'https://news.ycombinator.com';
 
@@ -23,15 +26,52 @@ export function cleanUrl(url) {
     }
 }
 
-export async function fetchHnHits(url) {
+export async function fetchHnHits(url, useCache = true) {
+    const cleanUrlStr = cleanUrl(url);
+    const cachedData = await searchCache(cleanUrlStr);
+    const cacheData = cachedData[cleanUrlStr] || {};
+    
+    if (useCache && await checkCacheValidity(cacheData)) {
+        return cacheData.hits || [];
+    }
+
     const params = new URLSearchParams({
-        query: cleanUrl(url),
+        query: cleanUrlStr,
         restrictSearchableAttributes: 'url',
         analytics: false
     });
     const res = await fetch(`${HN_API_URL}?${params}`);
-    const data = await res.json();
-    return data.hits || [];
+    const responseData = await res.json();
+    const hits = responseData.hits || [];
+
+    // Cache the results
+    try {
+        await cacheHits(cleanUrlStr, hits);
+    } catch (e) {
+        console.error('Error caching HN hits:', e);
+    }
+
+    return hits;
+}
+
+async function cacheHits(query, hits) {
+    const old_cache = await searchCache(query);
+    let objectToStore = {};
+    let data = old_cache[query] || {};
+    data.hits = hits;
+    data.time = Date.now();
+    objectToStore[query] = data;
+    await cache(objectToStore);
+}
+
+async function checkCacheValidity(cache) {
+    if (!cache.hasOwnProperty('hits') || !cache.hasOwnProperty('time')) {
+        return false;
+    }
+    const diff = Date.now() - cache.time;
+    const query = { cache: { period: DEFAULT_CACHE_PERIOD_MINS } };
+    const opts = await getOptions(query);
+    return diff < +(opts.cache.period) * 60000;
 }
 
 export function convertHitsToPostObjects(hits) {

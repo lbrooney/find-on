@@ -88,7 +88,7 @@ async function autoSearch(tabId, url) {
 		}
 	}
 	try {
-		const hnHits = await fetchHnHits(url);
+		const hnHits = await fetchHnHits(url, true);
 		hnPosts = convertHitsToPostObjects(hnHits);
 	} catch (e) {
 		console.log('HN fetch error', e);

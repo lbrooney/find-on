@@ -130,7 +130,7 @@ function render(userClicked = false) {
 			state.lastResult.url = originalUrl;
 			// Fetch HN hits and merge into list
 			import('./hn.js').then(mod => {
-				mod.fetchHnHits(originalUrl)
+				mod.fetchHnHits(originalUrl, useCache)
 					.then(hits => {
 						const hnPosts = mod.convertHitsToPostObjects(hits);
 						const combined = posts.concat(hnPosts);
