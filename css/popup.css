@@ -43,3 +43,15 @@ td.subreddit
 {
   font-size: 15px;
 }
+
+.no-results
+{
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.night-mode .no-results
+{
+  color: #ddd;
+}

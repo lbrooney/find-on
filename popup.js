@@ -219,6 +219,11 @@ function displayPosts(posts, url = '') {
 	if (!posts) {
 		return;
 	}
+	if (posts.length === 0) {
+		DOM.resultsDiv.html('<div class="no-results">No results found.</div>');
+		setUiState('SEARCH_END', { num: 0 });
+		return;
+	}
 	if (posts.length) {
 		posts.forEach(p => {
 			try {
@@ -252,6 +257,7 @@ function displayPosts(posts, url = '') {
 		}
 	};
 	messageTemplate(msg);
+	setUiState('SEARCH_END', { num: posts.length });
 }
 
 function messageTemplate(msg) {
@@ -282,7 +288,7 @@ function setUiState(state, params = null) {
 			} else {
 				DOM.otherResultsDiv.removeClass('hidden');
 			}
-			DOM.otherResultsNum.text(`${params.name} matches: ${params.num}`);
+			DOM.otherResultsNum.text(`matches: ${params.num}`);
 			break;
 		}
 		case 'AJAX_ERROR': {
