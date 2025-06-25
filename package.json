@@ -2,7 +2,7 @@
     "name": "find-on",
     "description": "Find discussions of the current URL on Reddit and Hacker News",
     "private": true,
-    "version": "1.7.1",
+    "version": "2.0.0",
     "type": "module",
     "scripts": {
         "dev": "wxt",
