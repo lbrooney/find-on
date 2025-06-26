@@ -6,11 +6,13 @@ import {
 	DescriptionOptions,
 } from "./DescriptionOption";
 
-interface SelectionOptionProps<T extends string | number | string[] | undefined> {
+interface SelectionOptionProps<
+	T extends string | number | string[] | undefined,
+> {
 	options: [value: T, text?: string][];
 	value: T;
 	description: string | DescriptionFormatted;
-	onChange: JSX.ChangeEventHandlerUnion<HTMLSelectElement, Event>
+	onChange: JSX.ChangeEventHandlerUnion<HTMLSelectElement, Event>;
 }
 
 export function SelectOption<T extends string | number | string[] | undefined>(
@@ -37,8 +39,8 @@ export function SelectOption<T extends string | number | string[] | undefined>(
 					"dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 " +
 					"mx-2 border-gray-400 dark:border-gray-600"
 				}
-				value={props.value}
 				onChange={props.onChange}
+				value={props.value}
 			>
 				<For each={props.options}>
 					{(option) => (

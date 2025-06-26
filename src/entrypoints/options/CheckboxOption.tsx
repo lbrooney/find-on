@@ -18,15 +18,15 @@ export function CheckboxOption(props: SelectionOptionProps) {
 	return (
 		<>
 			<input
-				classList={{
-					"size-4 shrink-0 mr-2 accent-blue-600 dark:accent-blue-400": true,
-					"mt-[3px]": finalProps.align,
-				}}
-				type="checkbox"
 				checked={finalProps.checked}
+				classList={{
+					"mt-[3px]": finalProps.align,
+					"size-4 shrink-0 mr-2 accent-blue-600 dark:accent-blue-400": true,
+				}}
 				onChange={(e) => {
 					finalProps.setChecked(e.currentTarget.checked);
 				}}
+				type="checkbox"
 			/>
 			<div>
 				<div>

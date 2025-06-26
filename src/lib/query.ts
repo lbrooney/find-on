@@ -10,9 +10,9 @@ import type {
 import type { ProcessedRedditPost } from "@/types/shared";
 
 export const fieldMappings: Record<OrderBy, keyof ProcessedRedditPost> = {
-	score: "score",
-	comments: "num_comments",
 	age: "created_utc",
+	comments: "num_comments",
+	score: "score",
 	subreddit: "subreddit",
 };
 
@@ -24,8 +24,8 @@ export const DEFAULT_POPUP_UI_OPTIONS: PopupUIOptions = {
 	newtabInBg: true,
 	newtabInBgAdjacent: false,
 	results: {
-		orderBy: "score",
 		desc: true,
+		orderBy: "score",
 	},
 };
 
@@ -35,33 +35,34 @@ export const DEFAULT_SEARCH_PARAM_OPTIONS: SearchParamOptions = {
 	ytHandling: true,
 };
 
-export const DEFAULT_POPUP_OPTIONS: PopupOptions = {
-	popup: DEFAULT_POPUP_UI_OPTIONS,
-	search: DEFAULT_SEARCH_PARAM_OPTIONS,
-	oldReddit: DEFAULT_REDDIT_FRONTEND,
+export const DEFAULT_AUTORUN_OPTIONS: AutorunOptions = {
+	activated: true,
+	alwaysBothExactAndNonExact: false,
+	badgeContent: "num_posts",
+	retryError: true,
+	retryExact: true,
+	updated: true,
 };
 
-export const DEFAULT_AUTORUN_OPTIONS: AutorunOptions = {
-	retryExact: true,
-	alwaysBothExactAndNonExact: false,
-	updated: true,
-	activated: true,
-	retryError: true,
-	badgeContent: "num_posts",
+export const DEFAULT_POPUP_OPTIONS: PopupOptions = {
+	autorun: DEFAULT_AUTORUN_OPTIONS,
+	oldReddit: DEFAULT_REDDIT_FRONTEND,
+	popup: DEFAULT_POPUP_UI_OPTIONS,
+	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };
 
 export const DEFAULT_BG_OPTIONS: BackgroundOptions = {
 	autorun: DEFAULT_AUTORUN_OPTIONS,
-	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 	blacklist: [],
+	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };
 
 export const DEFAULT_CACHE_PERIOD_MINS = 30;
 export const DEFAULT_OPTIONS: AllOptions = {
-	oldReddit: DEFAULT_REDDIT_FRONTEND,
 	autorun: DEFAULT_AUTORUN_OPTIONS,
 	blacklist: DEFAULT_BG_OPTIONS.blacklist,
 	cache: { period: DEFAULT_CACHE_PERIOD_MINS },
+	oldReddit: DEFAULT_REDDIT_FRONTEND,
 	popup: DEFAULT_POPUP_UI_OPTIONS,
 	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };

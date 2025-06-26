@@ -10,12 +10,12 @@ export function processUrl(
 		const ytVideoID = YT_REGEX.exec(url)?.[1];
 		if (ytVideoID) {
 			// biome-ignore lint/style/noNonNullAssertion: exec returns 2 things
-			return { urlToSearch: DASHES_REGEX.exec(ytVideoID)![1], isYt: true };
+			return { isYt: true, urlToSearch: DASHES_REGEX.exec(ytVideoID)![1] };
 		}
 	}
 	return {
-		urlToSearch: ignoreQueryString ? removeQueryString(url) : url,
 		isYt: false,
+		urlToSearch: ignoreQueryString ? removeQueryString(url) : url,
 	};
 }
 

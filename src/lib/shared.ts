@@ -1,6 +1,11 @@
-import { browser } from "wxt/browser";
+import { type Browser, browser } from "wxt/browser";
 import type { AllOptions } from "@/types/options";
 import { DEFAULT_OPTIONS } from "./query";
+
+export const BADGE_COLORS = {
+	error: "#DD1616",
+	success: "#555555",
+};
 
 export async function getCurrentTabUrl() {
 	const tab = await getCurrentTab();
@@ -60,12 +65,12 @@ export const pluralize = (str: string, n: number) =>
 	`${str}${n !== 1 ? "s" : ""}`;
 
 const timeUnits = [
-	{ factor: 1 / 1e3, name: "seconds", decis: 0 },
-	{ factor: 1 / (1e3 * 60), name: "minutes", decis: 0 },
-	{ factor: 1 / (1e3 * 60 * 60), name: "hours", decis: 0 },
-	{ factor: 1 / (1e3 * 60 * 60 * 24), name: "days", decis: 0 },
-	{ factor: 1 / (1e3 * 60 * 60 * 24 * 30), name: "months", decis: 0 },
-	{ factor: 1 / (1e3 * 60 * 60 * 24 * 30 * 12), name: "years", decis: 1 },
+	{ decis: 0, factor: 1 / 1e3, name: "seconds" },
+	{ decis: 0, factor: 1 / (1e3 * 60), name: "minutes" },
+	{ decis: 0, factor: 1 / (1e3 * 60 * 60), name: "hours" },
+	{ decis: 0, factor: 1 / (1e3 * 60 * 60 * 24), name: "days" },
+	{ decis: 0, factor: 1 / (1e3 * 60 * 60 * 24 * 30), name: "months" },
+	{ decis: 1, factor: 1 / (1e3 * 60 * 60 * 24 * 30 * 12), name: "years" },
 ];
 
 export function calcAge(timestampSeconds: number): string {
@@ -81,9 +86,41 @@ export function calcAge(timestampSeconds: number): string {
 
 export const unixToLocaleDate = (time: number) =>
 	new Date(time * 1000).toLocaleString(undefined, {
-		year: "numeric",
-		month: "short",
 		day: "numeric",
 		hour: "numeric",
 		minute: "2-digit",
+		month: "short",
+		year: "numeric",
 	});
+
+export function numToBadgeText(n: number) {
+	if (n < 1_000) {
+		return `${n}`;
+	} else if (n < 1_000_000) {
+		return `${Math.trunc(n / 1_000)}K+`;
+	} else if (n < 1_000_000_000) {
+		return `${Math.trunc(n / 1_000_000)}M+`;
+	}
+	return "inf";
+}
+
+export async function removeBadge(tabId: number) {
+	return setBadge(tabId, "", BADGE_COLORS.success);
+}
+
+export async function setBadge(tabId: number, text: string, color: string) {
+	const badge: Browser.action.BadgeTextDetails = { tabId: tabId, text: text };
+	const bgCol: Browser.action.BadgeColorDetails = {
+		color: color,
+		tabId: tabId,
+	};
+	// could just make the extension mv3 on firefox as well, but DX/hot reload is broken
+	try {
+		await (browser.action ?? browser.browserAction).setBadgeText(badge);
+		await (browser.action ?? browser.browserAction).setBadgeBackgroundColor(
+			bgCol,
+		);
+	} catch (args) {
+		console.log(args);
+	}
+}

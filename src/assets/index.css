@@ -2,5 +2,5 @@
 
 body {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    @apply text-sm;
+	@apply text-sm;
 }

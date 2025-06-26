@@ -1,11 +1,18 @@
 import { DEFAULT_CACHE_PERIOD_MINS } from "@/lib/query";
-import { cache, getOptions, searchCache } from "@/lib/shared";
+import {
+	cache,
+	calcAge,
+	getOptions,
+	searchCache,
+	unixToLocaleDate,
+} from "@/lib/shared";
 import type { RedditListing, RedditListings } from "@/types/Reddit";
+import type { ProcessedRedditPost } from "@/types/shared";
 
-export const SEARCH_API =
+const SEARCH_API =
 	"https://api.reddit.com/search.json?sort=top&t=all&limit=100&q=url:";
-export const INFO_API = "https://reddit.com/api/info.json?url=";
-export const DUPLICATES_API = "https://api.reddit.com/duplicates/";
+const INFO_API = "https://reddit.com/api/info.json?url=";
+const DUPLICATES_API = "https://api.reddit.com/duplicates/";
 
 interface RedditCacheData {
 	posts: RedditListing[];
@@ -31,8 +38,8 @@ export async function findOnReddit(url: string, useCache = true, exact = true) {
 		otherResultsCount = cached[nonType]?.posts.length;
 		if (useCache && results && (await checkCacheValidity(results))) {
 			return {
-				posts: results.posts,
 				other: otherResultsCount,
+				posts: results.posts,
 			};
 		}
 	}
@@ -43,33 +50,12 @@ export async function findOnReddit(url: string, useCache = true, exact = true) {
 		cachePosts(queryNoProtocol, posts, type),
 	]);
 	return {
-		posts: posts,
 		other: otherResultsCount,
+		posts: posts,
 	};
 }
 
-export async function search(query: string, useCache = true, exact = true) {
-	let otherResultsCount: number | undefined;
-	const cached = await searchCache<RedditCacheItem>(query);
-	if (cached) {
-		const results = cached[exact ? "exact" : "nonExact"];
-		otherResultsCount = cached[exact ? "nonExact" : "exact"]?.posts.length;
-		if (useCache && results && (await checkCacheValidity(results))) {
-			return {
-				posts: results.posts,
-				other: otherResultsCount,
-			};
-		}
-	}
-
-	const posts = await getPostsViaApi(exact ? INFO_API : SEARCH_API, query);
-	return {
-		posts: posts,
-		other: otherResultsCount,
-	};
-}
-
-export async function getPostsViaApi(requestUrl: string, query: string) {
+async function getPostsViaApi(requestUrl: string, query: string) {
 	const res = await fetch(`${requestUrl}${query}`);
 	if (!res.ok) {
 		throw new Error(`${res.status} - ${res.statusText}`);
@@ -80,7 +66,7 @@ export async function getPostsViaApi(requestUrl: string, query: string) {
 	return posts_extended;
 }
 
-export async function add_duplicates(posts: RedditListing[]) {
+async function add_duplicates(posts: RedditListing[]) {
 	// Pick the first post, get its duplicates, if there are any that are not
 	// already in the results, add them.
 	if (posts.length === 0) {
@@ -94,7 +80,7 @@ export async function add_duplicates(posts: RedditListing[]) {
 	return expandedPosts;
 }
 
-export async function get_duplicates_for_id(post_id: string) {
+async function get_duplicates_for_id(post_id: string) {
 	const res = await fetch(`${DUPLICATES_API}${post_id}`);
 	if (!res.ok) {
 		return [];
@@ -106,7 +92,7 @@ export async function get_duplicates_for_id(post_id: string) {
 	return posts;
 }
 
-export async function cachePosts(
+async function cachePosts(
 	query: string,
 	posts: RedditListing[],
 	type: "exact" | "nonExact",
@@ -120,7 +106,7 @@ export async function cachePosts(
 	await cache(query, cached);
 }
 
-export async function checkCacheValidity(data: RedditCacheData) {
+async function checkCacheValidity(data: RedditCacheData) {
 	if (!(data.time && data.posts)) {
 		return false;
 	}
@@ -130,4 +116,21 @@ export async function checkCacheValidity(data: RedditCacheData) {
 	});
 	const not_expired = diff < +opts.cache.period * 60000;
 	return not_expired;
+}
+
+export function convertRedditToPostObjects(
+	posts: RedditListing[],
+): ProcessedRedditPost[] {
+	return posts.map((p) => ({
+		age: calcAge(p.data.created_utc),
+		author: p.data.author,
+		created_utc: p.data.created_utc,
+		localDate: unixToLocaleDate(p.data.created_utc),
+		num_comments: p.data.num_comments,
+		permalink: p.data.permalink,
+		score: p.data.score,
+		subreddit: p.data.subreddit,
+		title: p.data.title,
+		url: p.data.url,
+	}));
 }

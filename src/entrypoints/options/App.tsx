@@ -90,8 +90,6 @@ function Options() {
 								<div class="flex w-full items-center">
 									<SelectOption
 										description="By default, sort results by"
-										value={options.value.popup.results.orderBy}
-										options={[["score"], ["comments"], ["age"], ["subreddit"]]}
 										onChange={(e) => {
 											setOptions(
 												"value",
@@ -101,11 +99,13 @@ function Options() {
 												e.currentTarget.value as OrderBy,
 											);
 										}}
+										options={[["score"], ["comments"], ["age"], ["subreddit"]]}
+										value={options.value.popup.results.orderBy}
 									/>
 									<CheckboxOption
 										align={false}
-										description={"descending"}
 										checked={options.value.popup.results.desc}
+										description={"descending"}
 										setChecked={(checked) => {
 											setOptions("value", "popup", "results", "desc", checked);
 										}}
@@ -118,28 +118,32 @@ function Options() {
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newTab}
+										description={"Open links in new tab"}
 										setChecked={(checked) =>
 											setOptions("value", "popup", "newTab", checked)
 										}
-										description={"Open links in new tab"}
 									/>
 								</div>
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newtabInBg}
-										setChecked={(checked) =>
-											setOptions("value", "popup", "newtabInBg", checked)
-										}
 										description={
 											"Open new tab in the background without switching to it. Allows opening multiple links without closing the popup."
 										}
 										note={"Note: Only applies if the above option is enabled."}
+										setChecked={(checked) =>
+											setOptions("value", "popup", "newtabInBg", checked)
+										}
 									/>
 								</div>
 
 								<div class="mt-2 mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newtabInBg}
+										description={
+											"If opening a new tab in the background, put it right next to the current tab instead of at the end."
+										}
+										note={"Only applies if the above two options are enabled."}
 										setChecked={(checked) =>
 											setOptions(
 												"value",
@@ -148,10 +152,6 @@ function Options() {
 												checked,
 											)
 										}
-										description={
-											"If opening a new tab in the background, put it right next to the current tab instead of at the end."
-										}
-										note={"Only applies if the above two options are enabled."}
 									/>
 								</div>
 							</div>
@@ -164,6 +164,23 @@ function Options() {
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newtabInBg}
+										description={"Exact match (Reddit only)"}
+										note={[
+											[
+												"If checked, ",
+												{ text: "xyz.com", type: "code" },
+												" will ",
+												{ text: "not", type: "underline" },
+												" match ",
+												{ text: "xyz.com/abc", type: "code" },
+												", ",
+												{ text: "xyz.com/abc/dev", type: "code" },
+												"etc.",
+											],
+											[
+												'Uses Reddit API\'s "info" endpoint instead of the "search" endpoint and is therefore faster and more reliable. HN search is always fuzzy.',
+											],
+										]}
 										setChecked={(checked) =>
 											setOptions(
 												"value",
@@ -172,53 +189,36 @@ function Options() {
 												checked,
 											)
 										}
-										description={"Exact match (Reddit only)"}
-										note={[
-											[
-												"If checked, ",
-												{ type: "code", text: "xyz.com" },
-												" will ",
-												{ type: "underline", text: "not" },
-												" match ",
-												{ type: "code", text: "xyz.com/abc" },
-												", ",
-												{ type: "code", text: "xyz.com/abc/dev" },
-												"etc.",
-											],
-											[
-												'Uses Reddit API\'s "info" endpoint instead of the "search" endpoint and is therefore faster and more reliable. HN search is always fuzzy.',
-											],
-										]}
 									/>
 								</div>
 								<div class="mt-2 mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.search.ignoreQs}
+										description={"Ignore query-string"}
 										setChecked={(checked) =>
 											setOptions("value", "search", "ignoreQs", checked)
 										}
-										description={"Ignore query-string"}
 									/>
 								</div>
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.search.ytHandling}
-										setChecked={(checked) =>
-											setOptions("value", "search", "ytHandling", checked)
-										}
 										description={"Special handling of YouTube video links"}
 										note={[
 											[
 												"If checked, search using the video ID only instead of the full URL to find all variations of YouTube links e.g. ",
-												{ type: "code", text: "youtu.be/dQw4w9WgXcQ" },
+												{ text: "youtu.be/dQw4w9WgXcQ", type: "code" },
 												", ",
 												{
-													type: "code",
 													text: "youtube.com/watch?v=dQw4w9WgXcQ",
+													type: "code",
 												},
 												", and more.",
 											],
 										]}
+										setChecked={(checked) =>
+											setOptions("value", "search", "ytHandling", checked)
+										}
 									/>
 								</div>
 							</div>
@@ -232,19 +232,23 @@ function Options() {
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.retryExact}
-										setChecked={(checked) =>
-											setOptions("value", "autorun", "retryExact", checked)
-										}
 										description={
 											"Automaticaly do a non-exact search if exact search returns zero results."
 										}
 										note={"Only applies to auto-search."}
+										setChecked={(checked) =>
+											setOptions("value", "autorun", "retryExact", checked)
+										}
 									/>
 								</div>
 
 								<div class="mt-2 mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.alwaysBothExactAndNonExact}
+										description={
+											"Always automaticaly do both an exact search and a non-exact search."
+										}
+										note={"Only applies to auto-search."}
 										setChecked={(checked) =>
 											setOptions(
 												"value",
@@ -253,10 +257,6 @@ function Options() {
 												checked,
 											)
 										}
-										description={
-											"Always automaticaly do both an exact search and a non-exact search."
-										}
-										note={"Only applies to auto-search."}
 									/>
 								</div>
 							</div>
@@ -266,21 +266,21 @@ function Options() {
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.updated}
-										setChecked={(checked) =>
-											setOptions("value", "autorun", "updated", checked)
-										}
 										description={
 											"When a tab's URL updates (e.g. you open a new tab, or you go to a different URL on the same tab, or refresh the tab)."
+										}
+										setChecked={(checked) =>
+											setOptions("value", "autorun", "updated", checked)
 										}
 									/>
 								</div>
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.activated}
+										description={"Every time you go to an already open tab."}
 										setChecked={(checked) =>
 											setOptions("value", "autorun", "activated", checked)
 										}
-										description={"Every time you go to an already open tab."}
 									/>
 								</div>
 							</div>
@@ -290,11 +290,11 @@ function Options() {
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.retryError}
-										setChecked={(checked) =>
-											setOptions("value", "autorun", "retryError", checked)
-										}
 										description={
 											"Retry search (every 5 seconds) in case of server error (Max attempts: 5)."
+										}
+										setChecked={(checked) =>
+											setOptions("value", "autorun", "retryError", checked)
 										}
 									/>
 								</div>
@@ -304,11 +304,6 @@ function Options() {
 							<div class="flex w-full items-center">
 								<SelectOption
 									description="Number to show in extension icon"
-									value={options.value.autorun.badgeContent}
-									options={[
-										["num_posts", "total posts (Reddit + HN)"],
-										["num_comments", "total comments (Reddit + HN)"],
-									]}
 									onChange={(e) => {
 										setOptions(
 											"value",
@@ -317,6 +312,11 @@ function Options() {
 											e.currentTarget.value as BadgeContent,
 										);
 									}}
+									options={[
+										["num_posts", "total posts (Reddit + HN)"],
+										["num_comments", "total comments (Reddit + HN)"],
+									]}
+									value={options.value.autorun.badgeContent}
 								/>
 							</div>
 
@@ -337,9 +337,7 @@ function Options() {
 								<For each={options.value.blacklist}>
 									{(item, idx) => (
 										<input
-											type="text"
 											class={formControlClasses}
-											value={item}
 											onChange={(e) => {
 												batch(() => {
 													setOptions(
@@ -353,13 +351,13 @@ function Options() {
 													);
 												});
 											}}
+											type="text"
+											value={item}
 										/>
 									)}
 								</For>
 								<input
-									type="text"
 									class={formControlClasses}
-									value={""}
 									onChange={(e) => {
 										if (e.currentTarget.value !== "") {
 											setOptions(
@@ -371,6 +369,8 @@ function Options() {
 											e.currentTarget.value = "";
 										}
 									}}
+									type="text"
+									value={""}
 								/>
 							</div>
 						</div>
@@ -384,11 +384,8 @@ function Options() {
 									class={
 										"inline-block w-auto min-w-0 rounded border border-gray-400 border-solid bg-white px-2.5 py-1 align-middle text-gray-700 text-sm leading-snug dark:border-gray-600 dark:bg-gray-700 dark:text-white"
 									}
-									type="number"
-									id="cache-period"
-									min="0"
 									max="1440"
-									value={options.value.cache.period}
+									min="0"
 									onChange={(e) => {
 										setOptions(
 											"value",
@@ -397,6 +394,8 @@ function Options() {
 											e.currentTarget.valueAsNumber,
 										);
 									}}
+									type="number"
+									value={options.value.cache.period}
 								/>
 								<span class="ml-2 whitespace-nowrap">minutes. (Max: 1440)</span>
 
@@ -417,8 +416,6 @@ function Options() {
 						<div class="mt-8 flex items-center pb-5">
 							<div class="mr-4 flex-shrink-0">
 								<button
-									id="save"
-									type="button"
 									class={
 										"inline-block cursor-pointer whitespace-nowrap rounded bg-none px-3 py-1.5 text-center align-middle text-base transition-colors " +
 										"border-gray-300 bg-gray-100 text-gray-800 " +
@@ -429,6 +426,7 @@ function Options() {
 										"dark:active:border-gray-600 dark:active:bg-gray-900 dark:active:text-white"
 									}
 									onClick={saveOptions}
+									type="button"
 								>
 									Save
 								</button>

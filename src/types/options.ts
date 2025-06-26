@@ -1,4 +1,4 @@
-export type BadgeContent = "num_posts" | "num_comments"
+export type BadgeContent = "num_posts" | "num_comments";
 
 export interface AutorunOptions {
 	retryExact: boolean;
@@ -18,29 +18,30 @@ export interface SearchParamOptions {
 export interface BackgroundOptions {
 	autorun: AutorunOptions;
 	search: SearchParamOptions;
-    blacklist: string[]
+	blacklist: string[];
 }
 
-export type OrderBy = "age" | "comments" | "score" | "subreddit"
+export type OrderBy = "age" | "comments" | "score" | "subreddit";
 
 export interface PopupUIOptions {
-    newTab: boolean
-    newtabInBg: boolean
-    newtabInBgAdjacent: boolean
-    results: {
-        orderBy: OrderBy
-        desc: boolean
-    }
+	newTab: boolean;
+	newtabInBg: boolean;
+	newtabInBgAdjacent: boolean;
+	results: {
+		orderBy: OrderBy;
+		desc: boolean;
+	};
 }
 
 export interface PopupOptions {
-    popup: PopupUIOptions
-    search: SearchParamOptions
-    oldReddit: boolean
+	autorun: AutorunOptions;
+	popup: PopupUIOptions;
+	search: SearchParamOptions;
+	oldReddit: boolean;
 }
 
 export interface AllOptions extends BackgroundOptions, PopupOptions {
-    cache: {
-        period: number
-    }
+	cache: {
+		period: number;
+	};
 }

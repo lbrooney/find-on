@@ -14,15 +14,16 @@ import {
 	type ProcessedHackerNewsPost,
 } from "@/types/shared";
 
-export const HN_API_URL = "https://hn.algolia.com/api/v1/search";
 export const HN_URL = "https://news.ycombinator.com";
+
+const HN_API_URL = "https://hn.algolia.com/api/v1/search";
 
 interface HNCacheItem {
 	hits: HNHit[];
 	time: number;
 }
 
-export function cleanUrl(url: string) {
+function cleanUrl(url: string) {
 	try {
 		const urlObj = new URL(url);
 		const params = urlObj.searchParams;
@@ -55,9 +56,9 @@ export async function fetchHnHits(url: string, useCache = true) {
 	}
 
 	const params = new URLSearchParams({
+		analytics: "false",
 		query: cleanUrlStr,
 		restrictSearchableAttributes: "url",
-		analytics: "false",
 	});
 	const res = await fetch(`${HN_API_URL}?${params}`);
 	if (!res.ok) {
@@ -98,16 +99,16 @@ export function convertHitsToPostObjects(
 	return hits.map((h) => {
 		const time = h.created_at_i ?? Math.floor(Date.now() / 1000);
 		return {
-			score: h.points ?? 0,
+			age: calcAge(time),
+			author: h.author ?? "user",
+			created_utc: time,
+			localDate: unixToLocaleDate(time),
 			num_comments: h.num_comments ?? 0,
+			permalink: `/item?id=${h.objectID}`,
+			score: h.points ?? 0,
+			subreddit: HACKER_NEWS_SUBREDDIT,
 			title: h.title ?? "HN Discussion",
 			url: h.url,
-			permalink: `/item?id=${h.objectID}`,
-			subreddit: HACKER_NEWS_SUBREDDIT,
-			created_utc: time,
-			author: h.author ?? "user",
-			age: calcAge(time),
-			localDate: unixToLocaleDate(time),
 		};
 	});
 }

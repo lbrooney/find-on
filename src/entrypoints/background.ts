@@ -3,28 +3,25 @@ import { defineBackground } from "wxt/utils/define-background";
 import { fetchHnHits } from "@/lib/hn";
 import { DEFAULT_BG_OPTIONS } from "@/lib/query";
 import { findOnReddit } from "@/lib/reddit";
-import { getOptions } from "@/lib/shared";
+import {
+	BADGE_COLORS,
+	getOptions,
+	numToBadgeText,
+	removeBadge,
+	setBadge,
+} from "@/lib/shared";
 import { processUrl, removeQueryString } from "@/lib/url";
 import type { HNHit } from "@/types/HN";
 import type { BackgroundOptions } from "@/types/options";
 import type { RedditListing } from "@/types/Reddit";
 
 export default defineBackground(() => {
-	const BADGE_COLORS = {
-		error: "#DD1616",
-		success: "#555555",
-	};
-
 	let bgOpts: BackgroundOptions;
 
 	// The respective listeners will noop if these are false. This hack is needed
 	// because we can no longer restart the background page in v3.
 	let tabUpdatedListenerActive = false;
 	let tabActivatedListenerActive = false;
-
-	// Throttling mechanism to handle multiple firings of the tabs.onUpdated event
-	// as the tab goes through different states while loading.
-	const recentlyQueried = new Set<string>([]);
 
 	browser.tabs.onUpdated.addListener(tabUpdatedListener);
 	browser.tabs.onActivated.addListener(tabActivatedListener);
@@ -38,32 +35,24 @@ export default defineBackground(() => {
 
 	async function tabUpdatedListener(
 		tabId: number,
-		_info: Browser.tabs.TabChangeInfo,
-		tab: Browser.tabs.Tab,
+		{ url: tabUrl }: Browser.tabs.TabChangeInfo,
 	) {
 		updateListenerFlags();
-		const tabUrl = tab.url;
-		if (!tabUrl) {
-			return;
-		}
 		if (!tabUpdatedListenerActive) {
 			return;
 		}
-		if (recentlyQueried.has(tabUrl)) {
+		if (!(tabUpdatedListenerActive && tabUrl)) {
 			return;
 		}
-		recentlyQueried.add(tabUrl);
-		setTimeout(() => recentlyQueried.delete(tabUrl), 1e3);
 		await removeBadge(tabId);
 		return autoSearch(tabId, tabUrl);
 	}
 
-	async function tabActivatedListener(activeInfo: Browser.tabs.TabActiveInfo) {
+	async function tabActivatedListener({ tabId }: Browser.tabs.TabActiveInfo) {
 		updateListenerFlags();
 		if (!tabActivatedListenerActive) {
 			return;
 		}
-		const tabId = activeInfo.tabId;
 		const tab = await browser.tabs.get(tabId);
 		return autoSearch(tabId, tab.url);
 	}
@@ -74,12 +63,12 @@ export default defineBackground(() => {
 		}
 
 		const { urlToSearch, isYt } = processUrl(url, {
-			ignoreQueryString: bgOpts.search.ignoreQs,
 			handleYtSpecial: bgOpts.search.ytHandling,
+			ignoreQueryString: bgOpts.search.ignoreQs,
 		});
 		const exactMatch = bgOpts.search.exactMatch && !isYt;
 		const [redditPosts, hnPosts] = await Promise.allSettled([
-			fetchReddit(urlToSearch, { tabId, exactMatch, isYt }),
+			fetchReddit(urlToSearch, { exactMatch, isYt, tabId }),
 			fetchHN(url, tabId),
 		]);
 		if (redditPosts.status === "fulfilled" && hnPosts.status === "fulfilled") {
@@ -177,7 +166,7 @@ export default defineBackground(() => {
 
 	function isAllowed(url: string) {
 		url = url.toLowerCase();
-		return url.length > 0 && !(isChromeUrl(url) || isBlackListed(url));
+		return url.length > 0 && /^https?:\/\//i.test(url) && !isBlackListed(url);
 	}
 
 	function isBlackListed(url: string) {
@@ -189,22 +178,8 @@ export default defineBackground(() => {
 		return setErrorBadge(tabId);
 	}
 
-	function isChromeUrl(url: string) {
-		return /^chrome/.test(url);
-	}
-
 	async function setErrorBadge(tabId: number) {
 		return setBadge(tabId, "X", BADGE_COLORS.error);
-	}
-
-	function numToBadgeText(n: number) {
-		if (n < 1_000) {
-			return `${n}`;
-		} else if (n < 1_000_000) {
-			return `${Math.trunc(n / 1_000)}K+`;
-		} else if (n < 1_000_000_000) {
-			return `${Math.trunc(n / 1_000_000)}M+`;
-		}
 	}
 
 	async function setResultsBadge(
@@ -216,8 +191,7 @@ export default defineBackground(() => {
 		const totalPosts = redditPosts.length + hnPosts.length;
 		if (totalPosts === 0) {
 			return setBadge(tabId, "0", color);
-		}
-		if (bgOpts.autorun.badgeContent === "num_comments") {
+		} else if (bgOpts.autorun.badgeContent === "num_comments") {
 			const numCommentsReddit = redditPosts.reduce(
 				(a, p) => a + p.data.num_comments,
 				0,
@@ -227,31 +201,6 @@ export default defineBackground(() => {
 			return setBadge(tabId, `${numToBadgeText(totalComments)}`, color);
 		} else {
 			return setBadge(tabId, `${numToBadgeText(totalPosts)}`, color);
-		}
-	}
-
-	async function removeBadge(tabId: number) {
-		return setBadge(tabId, "", BADGE_COLORS.success);
-	}
-
-	async function setBadge(tabId: number, text: string, color: string) {
-		const badge: Browser.action.BadgeTextDetails = { text: text, tabId: tabId };
-		const bgCol: Browser.action.BadgeColorDetails = {
-			color: color,
-			tabId: tabId,
-		};
-		// could just make the extension mv3 on firefox as well, but DX/hot reload is broken
-		try {
-			if (!browser.runtime.lastError) {
-				(browser.action ?? browser.browserAction).setBadgeText(badge);
-			}
-			if (!browser.runtime.lastError) {
-				(browser.action ?? browser.browserAction).setBadgeBackgroundColor(
-					bgCol,
-				);
-			}
-		} catch (args) {
-			console.log(args);
 		}
 	}
 });
