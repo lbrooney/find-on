@@ -1,10 +1,13 @@
 {
     "biome.enabled": true,
     "editor.codeActionsOnSave": {
+        "source.action.useSortedAttributes.biome": "explicit",
+        "source.action.useSortedKeys.biome": "explicit",
+        "source.action.useSortedProperties.biome": "explicit",
         "source.fixAll.biome": "explicit",
         "source.organizeImports.biome": "explicit"
     },
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
-    "editor.insertSpaces": false
+    "editor.insertSpaces": false,
 }

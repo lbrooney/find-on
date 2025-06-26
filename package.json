@@ -12,7 +12,10 @@
         "zip": "wxt zip",
         "zip:firefox": "wxt zip -b firefox",
         "compile": "tsc --noEmit",
-        "postinstall": "wxt prepare"
+        "postinstall": "wxt prepare",
+        "format": "biome format --write",
+        "lint": "biome lint --write",
+        "check": "biome check --write"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.1.10",
