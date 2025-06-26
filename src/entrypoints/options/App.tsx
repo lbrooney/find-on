@@ -285,7 +285,7 @@ function Options() {
 								</div>
 							</div>
 
-							<div class="mt-5 mb-2 text-lg">Retry</div>
+							<h3 class="mt-5 mb-2 text-lg">Retry</h3>
 							<div class="w-full">
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
@@ -300,7 +300,7 @@ function Options() {
 								</div>
 							</div>
 
-							<div class="mt-5 mb-2 text-lg">Display</div>
+							<h3 class="mt-5 mb-2 text-lg">Display</h3>
 							<div class="flex w-full items-center">
 								<SelectOption
 									description="Number to show in extension icon"
