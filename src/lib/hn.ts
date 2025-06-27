@@ -1,6 +1,6 @@
 // Shared Hacker News API helper used in popup.js and background.js
 
-import { DEFAULT_CACHE_PERIOD_MINS } from "@/lib/query";
+import { DEFAULT_CACHE_OPTIONS } from "@/lib/query";
 import {
 	cache,
 	calcAge,
@@ -81,15 +81,15 @@ async function cacheHits(query: string, hits: HNHit[]) {
 	});
 }
 
-async function checkCacheValidity(cache: HNCacheItem) {
-	if (!Object.hasOwn(cache, "hits") || !Object.hasOwn(cache, "time")) {
+async function checkCacheValidity(cacheItem: HNCacheItem) {
+	if (!Object.hasOwn(cacheItem, "hits") || !Object.hasOwn(cacheItem, "time")) {
 		return false;
 	}
-	const diff = Date.now() - cache.time;
-	const opts = await getOptions({
-		cache: { period: DEFAULT_CACHE_PERIOD_MINS },
+	const diff = Date.now() - cacheItem.time;
+	const { cache } = await getOptions({
+		cache: DEFAULT_CACHE_OPTIONS,
 	});
-	return diff < +opts.cache.period * 60000;
+	return diff < +cache.period * 60000;
 }
 
 export function convertHitsToPostObjects(

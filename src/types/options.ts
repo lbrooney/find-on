@@ -40,8 +40,10 @@ export interface PopupOptions {
 	oldReddit: boolean;
 }
 
+export interface CacheOptions {
+	period: number;
+}
+
 export interface AllOptions extends BackgroundOptions, PopupOptions {
-	cache: {
-		period: number;
-	};
+	cache: CacheOptions;
 }

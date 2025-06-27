@@ -1,4 +1,4 @@
-import { DEFAULT_CACHE_PERIOD_MINS } from "@/lib/query";
+import { DEFAULT_CACHE_OPTIONS } from "@/lib/query";
 import {
 	cache,
 	calcAge,
@@ -111,10 +111,10 @@ async function checkCacheValidity(data: RedditCacheData) {
 		return false;
 	}
 	const diff = Date.now() - data.time;
-	const opts = await getOptions({
-		cache: { period: DEFAULT_CACHE_PERIOD_MINS },
+	const { cache } = await getOptions({
+		cache: DEFAULT_CACHE_OPTIONS,
 	});
-	const not_expired = diff < +opts.cache.period * 60000;
+	const not_expired = diff < +cache.period * 60000;
 	return not_expired;
 }
 

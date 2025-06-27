@@ -2,6 +2,7 @@ import type {
 	AllOptions,
 	AutorunOptions,
 	BackgroundOptions,
+	CacheOptions,
 	OrderBy,
 	PopupOptions,
 	PopupUIOptions,
@@ -17,9 +18,9 @@ export const fieldMappings: Record<OrderBy, keyof ProcessedRedditPost> = {
 };
 
 /* false = new reddit, true = old reddit */
-export const DEFAULT_REDDIT_FRONTEND = false;
+const DEFAULT_REDDIT_FRONTEND = false;
 
-export const DEFAULT_POPUP_UI_OPTIONS: PopupUIOptions = {
+const DEFAULT_POPUP_UI_OPTIONS: PopupUIOptions = {
 	newTab: true,
 	newtabInBg: true,
 	newtabInBgAdjacent: false,
@@ -29,13 +30,13 @@ export const DEFAULT_POPUP_UI_OPTIONS: PopupUIOptions = {
 	},
 };
 
-export const DEFAULT_SEARCH_PARAM_OPTIONS: SearchParamOptions = {
+const DEFAULT_SEARCH_PARAM_OPTIONS: SearchParamOptions = {
 	exactMatch: true,
 	ignoreQs: true,
 	ytHandling: true,
 };
 
-export const DEFAULT_AUTORUN_OPTIONS: AutorunOptions = {
+const DEFAULT_AUTORUN_OPTIONS: AutorunOptions = {
 	activated: true,
 	alwaysBothExactAndNonExact: false,
 	badgeContent: "num_posts",
@@ -57,9 +58,14 @@ export const DEFAULT_BACKGROUND_OPTIONS: BackgroundOptions = {
 	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };
 
-export const DEFAULT_CACHE_PERIOD_MINS = 30;
+const DEFAULT_CACHE_PERIOD_MINS = 30;
+
+export const DEFAULT_CACHE_OPTIONS: CacheOptions = {
+	period: DEFAULT_CACHE_PERIOD_MINS,
+};
+
 export const DEFAULT_OPTIONS: AllOptions = {
 	...DEFAULT_POPUP_OPTIONS,
 	...DEFAULT_BACKGROUND_OPTIONS,
-	cache: { period: DEFAULT_CACHE_PERIOD_MINS },
+	cache: DEFAULT_CACHE_OPTIONS,
 };
