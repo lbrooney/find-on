@@ -10,4 +10,7 @@
     "editor.formatOnSave": true,
     "editor.formatOnType": true,
     "editor.insertSpaces": false,
+    "[json][jsonc][javascript][javascriptreact][typescript][typescriptreact][html]": {
+        "editor.defaultFormatter": "biomejs.biome"
+    },
 }

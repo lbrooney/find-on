@@ -13,10 +13,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": [
-			"src",
-			"wxt.config.ts"
-		]
+		"includes": ["src/**/*", "wxt.config.ts"]
 	},
 	"formatter": {
 		"enabled": true,
