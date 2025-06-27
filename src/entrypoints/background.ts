@@ -1,4 +1,4 @@
-import { type Browser, browser } from "wxt/browser";
+import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { fetchHnHits } from "@/lib/hn";
 import { DEFAULT_BG_OPTIONS } from "@/lib/query";
@@ -12,93 +12,27 @@ import {
 } from "@/lib/shared";
 import { processUrl, removeQueryString } from "@/lib/url";
 import type { HNHit } from "@/types/HN";
-import type { BackgroundOptions } from "@/types/options";
 import type { RedditListing } from "@/types/Reddit";
 
-export default defineBackground(() => {
-	let bgOpts: BackgroundOptions;
-
-	// The respective listeners will noop if these are false. This hack is needed
-	// because we can no longer restart the background page in v3.
-	let tabUpdatedListenerActive = false;
-	let tabActivatedListenerActive = false;
-
-	browser.tabs.onUpdated.addListener(tabUpdatedListener);
-	browser.tabs.onActivated.addListener(tabActivatedListener);
-	updateListenerFlags();
+export default defineBackground(async () => {
+	let options = DEFAULT_BG_OPTIONS;
 
 	async function updateListenerFlags() {
-		bgOpts = await getOptions(DEFAULT_BG_OPTIONS);
-		tabUpdatedListenerActive = bgOpts.autorun.updated;
-		tabActivatedListenerActive = bgOpts.autorun.activated;
+		options = await getOptions(DEFAULT_BG_OPTIONS);
 	}
 
-	async function tabUpdatedListener(
-		tabId: number,
-		{ url: tabUrl }: Browser.tabs.TabChangeInfo,
-	) {
-		updateListenerFlags();
-		if (!tabUpdatedListenerActive) {
-			return;
-		}
-		if (!(tabUpdatedListenerActive && tabUrl)) {
-			return;
-		}
-		await removeBadge(tabId);
-		return autoSearch(tabId, tabUrl);
-	}
-
-	async function tabActivatedListener({ tabId }: Browser.tabs.TabActiveInfo) {
-		updateListenerFlags();
-		if (!tabActivatedListenerActive) {
-			return;
-		}
-		const tab = await browser.tabs.get(tabId);
-		return autoSearch(tabId, tab.url);
-	}
-
-	async function autoSearch(tabId: number, url: string | undefined) {
-		if (!url || !isAllowed(removeQueryString(url))) {
-			return;
-		}
-
-		const { urlToSearch, isYt } = processUrl(url, {
-			handleYtSpecial: bgOpts.search.ytHandling,
-			ignoreQueryString: bgOpts.search.ignoreQs,
-		});
-		const exactMatch = bgOpts.search.exactMatch && !isYt;
-		const [redditPosts, hnPosts] = await Promise.allSettled([
-			fetchReddit(urlToSearch, { exactMatch, isYt, tabId }),
-			fetchHN(url, tabId),
-		]);
-		if (redditPosts.status === "fulfilled" && hnPosts.status === "fulfilled") {
-			return setResultsBadge(tabId, redditPosts.value, hnPosts.value);
-		} else if (redditPosts.status === "fulfilled") {
-			return setResultsBadge(tabId, redditPosts.value, []);
-		} else if (hnPosts.status === "fulfilled") {
-			return setResultsBadge(tabId, [], hnPosts.value);
-		}
-	}
+	updateListenerFlags();
 
 	const BG_RETRY_INTERVAL = 5e3;
 	const MAX_RETRIES = 5;
 
-	async function fetchHN(url: string, tabId: number) {
-		for (let i = 0; i < MAX_RETRIES; i++) {
-			try {
-				return await fetchHnHits(url, true);
-			} catch (e) {
-				if (bgOpts.autorun.retryError) {
-					await new Promise((resolve) =>
-						setTimeout(resolve, BG_RETRY_INTERVAL),
-					);
-				} else {
-					void handleError(e as Error, tabId);
-					return [];
-				}
-			}
-		}
-		return [];
+	async function setErrorBadge(tabId: number) {
+		return setBadge(tabId, "X", BADGE_COLORS.error);
+	}
+
+	async function handleError(e: Error, tabId: number) {
+		console.error(e);
+		return setErrorBadge(tabId);
 	}
 
 	async function searchExact(tabId: number, url: string) {
@@ -106,7 +40,7 @@ export default defineBackground(() => {
 			try {
 				return (await findOnReddit(url, true, true)).posts;
 			} catch (e) {
-				if (bgOpts.autorun.retryError) {
+				if (options.autorun.retryError) {
 					await new Promise((resolve) =>
 						setTimeout(resolve, BG_RETRY_INTERVAL),
 					);
@@ -124,7 +58,7 @@ export default defineBackground(() => {
 			try {
 				return (await findOnReddit(url, true, false)).posts;
 			} catch (e) {
-				if (bgOpts.autorun.retryError) {
+				if (options.autorun.retryError) {
 					await new Promise((resolve) =>
 						setTimeout(resolve, BG_RETRY_INTERVAL),
 					);
@@ -147,16 +81,16 @@ export default defineBackground(() => {
 	) {
 		if (exactMatch) {
 			let posts = await searchExact(tabId, urlToSearch);
-			if (bgOpts.autorun.retryExact && posts.length === 0) {
+			if (options.autorun.retryExact && posts.length === 0) {
 				posts = await searchNonExact(tabId, urlToSearch);
-			} else if (bgOpts.autorun.alwaysBothExactAndNonExact) {
+			} else if (options.autorun.alwaysBothExactAndNonExact) {
 				// don't return, just save to cache
 				void searchNonExact(tabId, urlToSearch);
 			}
 			return posts;
 		} else {
 			const posts = await searchNonExact(tabId, urlToSearch);
-			if (bgOpts.autorun.alwaysBothExactAndNonExact && !isYt) {
+			if (options.autorun.alwaysBothExactAndNonExact && !isYt) {
 				// don't return, just save to cache
 				void searchExact(tabId, urlToSearch);
 			}
@@ -164,22 +98,31 @@ export default defineBackground(() => {
 		}
 	}
 
-	function isAllowed(url: string) {
-		url = url.toLowerCase();
-		return url.length > 0 && /^https?:\/\//i.test(url) && !isBlackListed(url);
+	async function fetchHN(url: string, tabId: number) {
+		for (let i = 0; i < MAX_RETRIES; i++) {
+			try {
+				return await fetchHnHits(url, true);
+			} catch (e) {
+				if (options.autorun.retryError) {
+					await new Promise((resolve) =>
+						setTimeout(resolve, BG_RETRY_INTERVAL),
+					);
+				} else {
+					void handleError(e as Error, tabId);
+					return [];
+				}
+			}
+		}
+		return [];
 	}
 
 	function isBlackListed(url: string) {
-		return bgOpts.blacklist.some((s) => url.search(s) > -1);
+		return options.blacklist.some((s) => url.search(s) > -1);
 	}
 
-	async function handleError(e: Error, tabId: number) {
-		console.error(e);
-		return setErrorBadge(tabId);
-	}
-
-	async function setErrorBadge(tabId: number) {
-		return setBadge(tabId, "X", BADGE_COLORS.error);
+	function isAllowed(url: string) {
+		url = url.toLowerCase();
+		return url.length > 0 && /^https?:\/\//i.test(url) && !isBlackListed(url);
 	}
 
 	async function setResultsBadge(
@@ -191,7 +134,7 @@ export default defineBackground(() => {
 		const totalPosts = redditPosts.length + hnPosts.length;
 		if (totalPosts === 0) {
 			return setBadge(tabId, "0", color);
-		} else if (bgOpts.autorun.badgeContent === "num_comments") {
+		} else if (options.autorun.badgeContent === "num_comments") {
 			const numCommentsReddit = redditPosts.reduce(
 				(a, p) => a + p.data.num_comments,
 				0,
@@ -203,4 +146,47 @@ export default defineBackground(() => {
 			return setBadge(tabId, `${numToBadgeText(totalPosts)}`, color);
 		}
 	}
+
+	async function autoSearch(tabId: number, url: string) {
+		if (!isAllowed(removeQueryString(url))) {
+			return;
+		}
+
+		const { urlToSearch, isYt } = processUrl(url, {
+			handleYtSpecial: options.search.ytHandling,
+			ignoreQueryString: options.search.ignoreQs,
+		});
+		const exactMatch = options.search.exactMatch && !isYt;
+		const [redditPosts, hnPosts] = await Promise.allSettled([
+			fetchReddit(urlToSearch, { exactMatch, isYt, tabId }),
+			fetchHN(url, tabId),
+		]);
+		if (redditPosts.status === "fulfilled" && hnPosts.status === "fulfilled") {
+			return setResultsBadge(tabId, redditPosts.value, hnPosts.value);
+		} else if (redditPosts.status === "fulfilled") {
+			return setResultsBadge(tabId, redditPosts.value, []);
+		} else if (hnPosts.status === "fulfilled") {
+			return setResultsBadge(tabId, [], hnPosts.value);
+		}
+	}
+
+	browser.tabs.onUpdated.addListener(async (tabId, { status }, tab) => {
+		await updateListenerFlags();
+		const tabUrl = tab.url;
+		// check on status which runs on url change and page reload
+		if (!options.autorun.updated || !tabUrl || status !== "loading") {
+			return;
+		}
+		await removeBadge(tabId);
+		return autoSearch(tabId, tabUrl);
+	});
+
+	browser.tabs.onActivated.addListener(async ({ tabId }) => {
+		await updateListenerFlags();
+		const tabUrl = (await browser.tabs.get(tabId))?.url;
+		if (!options.autorun.activated || !tabUrl) {
+			return;
+		}
+		return autoSearch(tabId, tabUrl);
+	});
 });
