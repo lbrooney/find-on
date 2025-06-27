@@ -4,7 +4,7 @@ import { batch, createSignal, For, Match, onMount, Switch } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import { browser } from "wxt/browser";
 import { DEFAULT_OPTIONS } from "@/lib/query";
-import { getOptions, updateOptions } from "@/lib/shared";
+import { getAllOptions, updateOptions } from "@/lib/shared";
 import type { AllOptions, BadgeContent, OrderBy } from "@/types/options";
 import { CheckboxOption } from "./CheckboxOption";
 import { DescriptionOptions } from "./DescriptionOption";
@@ -33,11 +33,6 @@ function Options() {
 		} catch (_e) {
 			notifyFailure();
 		}
-		//await restoreOptions();
-	};
-
-	const restoreOptions = async () => {
-		setOptions({ value: await getOptions(DEFAULT_OPTIONS) });
 	};
 
 	const notifySuccess = () => {
@@ -54,8 +49,8 @@ function Options() {
 		setStatusMessage(msg);
 	};
 
-	onMount(() => {
-		void restoreOptions();
+	onMount(async () => {
+		setOptions({ value: await getAllOptions() });
 		setMounted(true);
 	});
 

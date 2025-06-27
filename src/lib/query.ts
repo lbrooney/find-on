@@ -36,12 +36,12 @@ export const DEFAULT_SEARCH_PARAM_OPTIONS: SearchParamOptions = {
 };
 
 export const DEFAULT_AUTORUN_OPTIONS: AutorunOptions = {
-	activated: false,
+	activated: true,
 	alwaysBothExactAndNonExact: false,
 	badgeContent: "num_posts",
 	retryError: true,
 	retryExact: true,
-	updated: false,
+	updated: true,
 };
 
 export const DEFAULT_POPUP_OPTIONS: PopupOptions = {
@@ -51,7 +51,7 @@ export const DEFAULT_POPUP_OPTIONS: PopupOptions = {
 	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };
 
-export const DEFAULT_BG_OPTIONS: BackgroundOptions = {
+export const DEFAULT_BACKGROUND_OPTIONS: BackgroundOptions = {
 	autorun: DEFAULT_AUTORUN_OPTIONS,
 	blacklist: [],
 	search: DEFAULT_SEARCH_PARAM_OPTIONS,
@@ -59,10 +59,7 @@ export const DEFAULT_BG_OPTIONS: BackgroundOptions = {
 
 export const DEFAULT_CACHE_PERIOD_MINS = 30;
 export const DEFAULT_OPTIONS: AllOptions = {
-	autorun: DEFAULT_AUTORUN_OPTIONS,
-	blacklist: DEFAULT_BG_OPTIONS.blacklist,
+	...DEFAULT_POPUP_OPTIONS,
+	...DEFAULT_BACKGROUND_OPTIONS,
 	cache: { period: DEFAULT_CACHE_PERIOD_MINS },
-	oldReddit: DEFAULT_REDDIT_FRONTEND,
-	popup: DEFAULT_POPUP_UI_OPTIONS,
-	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };
