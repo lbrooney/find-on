@@ -33,9 +33,7 @@ export async function navigateTo(url: string) {
 }
 
 export async function searchCache<T>(query: string) {
-	return (
-		(await browser.storage.session.get(query)) as { [query]: T | undefined }
-	)[query];
+	return (await browser.storage.session.get<{ [query]?: T }>(query))[query];
 }
 
 export async function clearCache() {
@@ -43,22 +41,19 @@ export async function clearCache() {
 }
 
 export async function cache<T>(key: string, data: T) {
-	await browser.storage.session.set({ [key]: data });
+	await browser.storage.session.set<{ [key]: T }>({ [key]: data });
 }
 
-export async function updateOptions(data: AllOptions) {
-	await browser.storage.sync.set({ options: data });
+export async function updateOptions<T extends Partial<AllOptions>>(data: T) {
+	await browser.storage.sync.set<T>(data);
 }
 
 export async function getAllOptions() {
 	return getOptions(DEFAULT_OPTIONS);
 }
 
-export async function getOptions<T extends Partial<AllOptions>>(
-	query: T,
-): Promise<T> {
-	const data = await browser.storage.sync.get({ options: query });
-	return data.options;
+export async function getOptions<T extends Partial<AllOptions>>(query: T) {
+	return browser.storage.sync.get<T>(query);
 }
 
 export const pluralize = (str: string, n: number) =>
