@@ -1,7 +1,7 @@
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { fetchHnHits } from "@/lib/hn";
-import { DEFAULT_BG_OPTIONS } from "@/lib/query";
+import { DEFAULT_OPTIONS } from "@/lib/query";
 import { findOnReddit } from "@/lib/reddit";
 import {
 	BADGE_COLORS,
@@ -9,16 +9,22 @@ import {
 	numToBadgeText,
 	removeBadge,
 	setBadge,
+	updateOptions,
 } from "@/lib/shared";
 import { processUrl, removeQueryString } from "@/lib/url";
 import type { HNHit } from "@/types/HN";
 import type { RedditListing } from "@/types/Reddit";
 
 export default defineBackground(async () => {
-	let options = DEFAULT_BG_OPTIONS;
+	let options = DEFAULT_OPTIONS;
 
 	async function updateListenerFlags() {
-		options = await getOptions(DEFAULT_BG_OPTIONS);
+		options = await getOptions(DEFAULT_OPTIONS);
+		if (!(await browser.permissions.contains({ permissions: ["tabs"] }))) {
+			options.autorun.activated = false;
+			options.autorun.updated = false;
+			await updateOptions(options);
+		}
 	}
 
 	updateListenerFlags();

@@ -2,6 +2,7 @@ import "@/assets/index.css";
 
 import { batch, createSignal, For, Match, onMount, Switch } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
+import { browser } from "wxt/browser";
 import { DEFAULT_OPTIONS } from "@/lib/query";
 import { getOptions, updateOptions } from "@/lib/shared";
 import type { AllOptions, BadgeContent, OrderBy } from "@/types/options";
@@ -75,7 +76,7 @@ function Options() {
 										"Make all links point to ",
 										{ text: "old.reddit.com", type: "code" },
 									]}
-									setChecked={(checked) => {
+									setSimpleChecked={(checked) => {
 										setOptions("value", "oldReddit", checked);
 									}}
 								/>
@@ -85,7 +86,7 @@ function Options() {
 
 						<h2 class="mt-8 mb-2 text-2xl">Popup</h2>
 						<div class="mb-4">
-							<h3 class="mt-5 mb-2 text-lg">Results</h3>
+							<h3 class="mt-3 mb-2 text-lg">Results</h3>
 							<div class="flex items-center">
 								<div class="flex w-full items-center">
 									<SelectOption
@@ -106,20 +107,20 @@ function Options() {
 										align={false}
 										checked={options.value.popup.results.desc}
 										description={"descending"}
-										setChecked={(checked) => {
+										setSimpleChecked={(checked) => {
 											setOptions("value", "popup", "results", "desc", checked);
 										}}
 									/>
 								</div>
 							</div>
 
-							<h3 class="mt-5 mb-2 text-lg">Links</h3>
+							<h3 class="mt-3 mb-2 text-lg">Links</h3>
 							<div class="w-full">
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newTab}
 										description={"Open links in new tab"}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions("value", "popup", "newTab", checked)
 										}
 									/>
@@ -131,7 +132,7 @@ function Options() {
 											"Open new tab in the background without switching to it. Allows opening multiple links without closing the popup."
 										}
 										note={"Note: Only applies if the above option is enabled."}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions("value", "popup", "newtabInBg", checked)
 										}
 									/>
@@ -144,7 +145,7 @@ function Options() {
 											"If opening a new tab in the background, put it right next to the current tab instead of at the end."
 										}
 										note={"Only applies if the above two options are enabled."}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions(
 												"value",
 												"popup",
@@ -181,7 +182,7 @@ function Options() {
 												'Uses Reddit API\'s "info" endpoint instead of the "search" endpoint and is therefore faster and more reliable. HN search is always fuzzy.',
 											],
 										]}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions(
 												"value",
 												"popup",
@@ -195,7 +196,7 @@ function Options() {
 									<CheckboxOption
 										checked={options.value.search.ignoreQs}
 										description={"Ignore query-string"}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions("value", "search", "ignoreQs", checked)
 										}
 									/>
@@ -216,7 +217,7 @@ function Options() {
 												", and more.",
 											],
 										]}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions("value", "search", "ytHandling", checked)
 										}
 									/>
@@ -227,7 +228,79 @@ function Options() {
 
 						<h2 class="mt-8 mb-2 text-2xl">Auto-search</h2>
 						<div class="mb-4">
-							<h3 class="mt-5 mb-2 text-lg">Exact vs non-exact</h3>
+							<h3 class="mt-3 mb-2 text-lg">When to run the search?</h3>
+							<div class="w-full">
+								<div class="mb-1.5 flex items-start">
+									<CheckboxOption
+										checked={options.value.autorun.updated}
+										description={
+											"When a tab's URL updates (e.g. you open a new tab, or you go to a different URL on the same tab, or refresh the tab)."
+										}
+										note={[
+											[
+												"This feature requires the ",
+												{ text: "tabs", type: "code" },
+												" permission. Previously this was granted implicitly, but is now is requested upon activating this option. ",
+												"Once activated you won't be requested again to grant permission. ",
+												"Remember to click ",
+												{ text: "save", type: "underline" },
+												" at the bottom!",
+											],
+										]}
+										setComplexChecked={async (e) => {
+											const response = await browser.permissions.request({
+												permissions: ["tabs"],
+											});
+											if (response) {
+												setOptions(
+													"value",
+													"autorun",
+													"updated",
+													e.target.checked,
+												);
+											} else {
+												e.target.checked = false;
+											}
+										}}
+										type="complex"
+									/>
+								</div>
+								<div class="mb-1.5 flex items-start">
+									<CheckboxOption
+										checked={options.value.autorun.activated}
+										description={"Every time you go to an already open tab."}
+										note={[
+											[
+												"This feature requires the ",
+												{ text: "tabs", type: "code" },
+												" permission. Previously this was granted implicitly, but is now is requested upon activating this option. ",
+												"Once activated you won't be requested again to grant permission. ",
+												"Remember to click ",
+												{ text: "save", type: "underline" },
+												" at the bottom!",
+											],
+										]}
+										setComplexChecked={async (e) => {
+											const response = await browser.permissions.request({
+												permissions: ["tabs"],
+											});
+											if (response) {
+												setOptions(
+													"value",
+													"autorun",
+													"activated",
+													e.target.checked,
+												);
+											} else {
+												e.target.checked = false;
+											}
+										}}
+										type="complex"
+									/>
+								</div>
+							</div>
+
+							<h3 class="mt-3 mb-2 text-lg">Exact vs non-exact</h3>
 							<div class="w-full">
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
@@ -236,7 +309,7 @@ function Options() {
 											"Automaticaly do a non-exact search if exact search returns zero results."
 										}
 										note={"Only applies to auto-search."}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions("value", "autorun", "retryExact", checked)
 										}
 									/>
@@ -249,7 +322,7 @@ function Options() {
 											"Always automaticaly do both an exact search and a non-exact search."
 										}
 										note={"Only applies to auto-search."}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions(
 												"value",
 												"autorun",
@@ -261,31 +334,7 @@ function Options() {
 								</div>
 							</div>
 
-							<h3 class="mt-5 mb-2 text-lg">When to run the search?</h3>
-							<div class="w-full">
-								<div class="mb-1.5 flex items-start">
-									<CheckboxOption
-										checked={options.value.autorun.updated}
-										description={
-											"When a tab's URL updates (e.g. you open a new tab, or you go to a different URL on the same tab, or refresh the tab)."
-										}
-										setChecked={(checked) =>
-											setOptions("value", "autorun", "updated", checked)
-										}
-									/>
-								</div>
-								<div class="mb-1.5 flex items-start">
-									<CheckboxOption
-										checked={options.value.autorun.activated}
-										description={"Every time you go to an already open tab."}
-										setChecked={(checked) =>
-											setOptions("value", "autorun", "activated", checked)
-										}
-									/>
-								</div>
-							</div>
-
-							<h3 class="mt-5 mb-2 text-lg">Retry</h3>
+							<h3 class="mt-3 mb-2 text-lg">Retry</h3>
 							<div class="w-full">
 								<div class="mb-1.5 flex items-start">
 									<CheckboxOption
@@ -293,14 +342,14 @@ function Options() {
 										description={
 											"Retry search (every 5 seconds) in case of server error (Max attempts: 5)."
 										}
-										setChecked={(checked) =>
+										setSimpleChecked={(checked) =>
 											setOptions("value", "autorun", "retryError", checked)
 										}
 									/>
 								</div>
 							</div>
 
-							<h3 class="mt-5 mb-2 text-lg">Display</h3>
+							<h3 class="mt-3 mb-2 text-lg">Display</h3>
 							<div class="flex w-full items-center">
 								<SelectOption
 									description="Number to show in extension icon"
@@ -320,7 +369,7 @@ function Options() {
 								/>
 							</div>
 
-							<h3 class="mt-5 mb-2 text-lg">Blacklist</h3>
+							<h3 class="mt-3 mb-2 text-lg">Blacklist</h3>
 							<p class="mb-2">
 								<DescriptionOptions
 									formatted={[

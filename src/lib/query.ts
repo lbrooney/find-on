@@ -36,12 +36,12 @@ export const DEFAULT_SEARCH_PARAM_OPTIONS: SearchParamOptions = {
 };
 
 export const DEFAULT_AUTORUN_OPTIONS: AutorunOptions = {
-	activated: true,
+	activated: false,
 	alwaysBothExactAndNonExact: false,
 	badgeContent: "num_posts",
 	retryError: true,
 	retryExact: true,
-	updated: true,
+	updated: false,
 };
 
 export const DEFAULT_POPUP_OPTIONS: PopupOptions = {

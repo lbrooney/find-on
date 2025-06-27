@@ -5,16 +5,32 @@ import {
 } from "./DescriptionOption";
 import { Note, type NoteType } from "./Note";
 
-interface SelectionOptionProps {
+interface CheckboxOptionProps {
 	checked: boolean;
 	description: string | DescriptionFormatted;
-	setChecked: (checked: boolean) => void;
 	align?: boolean;
 	note?: NoteType;
 }
 
-export function CheckboxOption(props: SelectionOptionProps) {
-	const finalProps = mergeProps({ align: true }, props);
+interface SimpleCheckboxOption extends CheckboxOptionProps {
+	setSimpleChecked: (checked: boolean) => void;
+	type?: "simple";
+}
+
+interface ComplexCheckboxOption extends CheckboxOptionProps {
+	type: "complex";
+	setComplexChecked: (
+		e: Event & {
+			currentTarget: HTMLInputElement;
+			target: HTMLInputElement;
+		},
+	) => void;
+}
+
+export function CheckboxOption(
+	props: SimpleCheckboxOption | ComplexCheckboxOption,
+) {
+	const finalProps = mergeProps({ align: true, type: "simple" }, props);
 	return (
 		<>
 			<input
@@ -24,7 +40,13 @@ export function CheckboxOption(props: SelectionOptionProps) {
 					"size-4 shrink-0 mr-2 accent-blue-600 dark:accent-blue-400": true,
 				}}
 				onChange={(e) => {
-					finalProps.setChecked(e.currentTarget.checked);
+					if (props.type === "simple") {
+						(finalProps as SimpleCheckboxOption).setSimpleChecked(
+							e.target.checked,
+						);
+					} else if (props.type === "complex") {
+						(finalProps as ComplexCheckboxOption).setComplexChecked(e);
+					}
 				}}
 				type="checkbox"
 			/>
