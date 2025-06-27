@@ -40,11 +40,11 @@ export function CheckboxOption(
 					"size-4 shrink-0 mr-2 accent-blue-600 dark:accent-blue-400": true,
 				}}
 				onChange={(e) => {
-					if (props.type === "simple") {
+					if (finalProps.type === "simple") {
 						(finalProps as SimpleCheckboxOption).setSimpleChecked(
 							e.target.checked,
 						);
-					} else if (props.type === "complex") {
+					} else if (finalProps.type === "complex") {
 						(finalProps as ComplexCheckboxOption).setComplexChecked(e);
 					}
 				}}
