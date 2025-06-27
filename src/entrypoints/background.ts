@@ -16,7 +16,7 @@ import type { HNHit } from "@/types/HN";
 import type { BackgroundOptions } from "@/types/options";
 import type { RedditListing } from "@/types/Reddit";
 
-export default defineBackground(async () => {
+export default defineBackground(() => {
 	let options: BackgroundOptions;
 
 	async function updateListenerFlags() {
