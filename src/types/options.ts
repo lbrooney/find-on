@@ -9,11 +9,17 @@ export interface AutorunOptions {
 	badgeContent: BadgeContent;
 }
 
-export interface SearchParamOptions {
-	exactMatch: boolean;
-	ignoreQs: boolean;
-	ytHandling: boolean;
+export interface Sources {
+	reddit: boolean;
+	hackernews: boolean;
 }
+
+export interface SearchParamOptions {
+		exactMatch: boolean;
+		ignoreQs: boolean;
+		sources: Sources;
+		ytHandling: boolean;
+	}
 
 export interface BackgroundOptions {
 	autorun: AutorunOptions;

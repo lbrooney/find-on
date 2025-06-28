@@ -62,13 +62,52 @@ function Options() {
 					<h1 class="mb-5 text-4xl">Options</h1>
 					<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />{" "}
 					<form class="form">
-						<h2 class="mt-8 mb-2 text-2xl">Old Reddit</h2>
+						<h2 class="mt-5 mb-2 text-2xl">Sources</h2>
+						<div class="mb-4 flex flex-col gap-y-2.5">
+							<div class="flex items-start">
+								<CheckboxOption
+									checked={options.value.search.sources.reddit}
+									description={[
+										"Search ",
+										{ text: "Reddit", type: "bold" },
+										" for links by default.",
+									]}
+									disabled={!options.value.search.sources.hackernews}
+									setSimpleChecked={(checked) => {
+										setOptions("value", "search", "sources", "reddit", checked);
+									}}
+								/>
+							</div>
+							<div class="flex items-start">
+								<CheckboxOption
+									checked={options.value.search.sources.hackernews}
+									description={[
+										"Search ",
+										{ text: "Hacker News", type: "bold" },
+										" for links by default.",
+									]}
+									disabled={!options.value.search.sources.reddit}
+									setSimpleChecked={(checked) => {
+										setOptions(
+											"value",
+											"search",
+											"sources",
+											"hackernews",
+											checked,
+										);
+									}}
+								/>
+							</div>
+						</div>
+						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />
+
+						<h2 class="mt-5 mb-2 text-2xl">Old Reddit</h2>
 						<div class="mb-4">
 							<div class="flex items-start">
 								<CheckboxOption
 									checked={options.value.oldReddit}
 									description={[
-										"Make all links point to ",
+										"Make Reddit links point to ",
 										{ text: "old.reddit.com", type: "code" },
 									]}
 									setSimpleChecked={(checked) => {
@@ -79,9 +118,9 @@ function Options() {
 						</div>
 						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />
 
-						<h2 class="mt-8 mb-2 text-2xl">Popup</h2>
+						<h2 class="mt-5 mb-2 text-2xl">Popup</h2>
 						<div class="mb-4">
-							<h3 class="mt-3 mb-2 text-lg">Results</h3>
+							<h3 class="mt-3 text-lg">Results</h3>
 							<div class="flex items-center">
 								<div class="flex w-full items-center">
 									<SelectOption
@@ -110,8 +149,8 @@ function Options() {
 							</div>
 
 							<h3 class="mt-3 mb-2 text-lg">Links</h3>
-							<div class="w-full">
-								<div class="mb-1.5 flex items-start">
+							<div class="mb-4 flex flex-col gap-y-2.5">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newTab}
 										description={"Open links in new tab"}
@@ -120,7 +159,7 @@ function Options() {
 										}
 									/>
 								</div>
-								<div class="mb-1.5 flex items-start">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newtabInBg}
 										description={
@@ -133,7 +172,7 @@ function Options() {
 									/>
 								</div>
 
-								<div class="mt-2 mb-1.5 flex items-start">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.popup.newtabInBg}
 										description={
@@ -154,78 +193,71 @@ function Options() {
 						</div>
 						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />
 
-						<h2 class="mt-8 mb-2 text-2xl">Search Defaults</h2>
-						<div class="mb-4">
-							<div class="w-full">
-								<div class="mb-1.5 flex items-start">
-									<CheckboxOption
-										checked={options.value.popup.newtabInBg}
-										description={"Exact match (Reddit only)"}
-										note={[
-											[
-												"If checked, ",
-												{ text: "xyz.com", type: "code" },
-												" will ",
-												{ text: "not", type: "underline" },
-												" match ",
-												{ text: "xyz.com/abc", type: "code" },
-												", ",
-												{ text: "xyz.com/abc/dev", type: "code" },
-												"etc.",
-											],
-											[
-												'Uses Reddit API\'s "info" endpoint instead of the "search" endpoint and is therefore faster and more reliable. HN search is always fuzzy.',
-											],
-										]}
-										setSimpleChecked={(checked) =>
-											setOptions(
-												"value",
-												"popup",
-												"newtabInBgAdjacent",
-												checked,
-											)
-										}
-									/>
-								</div>
-								<div class="mt-2 mb-1.5 flex items-start">
-									<CheckboxOption
-										checked={options.value.search.ignoreQs}
-										description={"Ignore query-string"}
-										setSimpleChecked={(checked) =>
-											setOptions("value", "search", "ignoreQs", checked)
-										}
-									/>
-								</div>
-								<div class="mb-1.5 flex items-start">
-									<CheckboxOption
-										checked={options.value.search.ytHandling}
-										description={"Special handling of YouTube video links"}
-										note={[
-											[
-												"If checked, search using the video ID only instead of the full URL to find all variations of YouTube links e.g. ",
-												{ text: "youtu.be/dQw4w9WgXcQ", type: "code" },
-												", ",
-												{
-													text: "youtube.com/watch?v=dQw4w9WgXcQ",
-													type: "code",
-												},
-												", and more.",
-											],
-										]}
-										setSimpleChecked={(checked) =>
-											setOptions("value", "search", "ytHandling", checked)
-										}
-									/>
-								</div>
+						<h2 class="mt-5 mb-2 text-2xl">Search Defaults</h2>
+						<div class="mb-4 flex flex-col gap-y-2.5">
+							<div class="flex items-start">
+								<CheckboxOption
+									checked={options.value.popup.newtabInBg}
+									description={"Exact match (Reddit only)"}
+									note={[
+										[
+											"If checked, ",
+											{ text: "xyz.com", type: "code" },
+											" will ",
+											{ text: "not", type: "underline" },
+											" match ",
+											{ text: "xyz.com/abc", type: "code" },
+											", ",
+											{ text: "xyz.com/abc/dev", type: "code" },
+											"etc.",
+										],
+										[
+											'Uses Reddit API\'s "info" endpoint instead of the "search" endpoint and is therefore faster and more reliable. HN search is always fuzzy.',
+										],
+									]}
+									setSimpleChecked={(checked) =>
+										setOptions("value", "popup", "newtabInBgAdjacent", checked)
+									}
+								/>
+							</div>
+							<div class="flex items-start">
+								<CheckboxOption
+									checked={options.value.search.ignoreQs}
+									description={"Ignore query-string"}
+									setSimpleChecked={(checked) =>
+										setOptions("value", "search", "ignoreQs", checked)
+									}
+								/>
+							</div>
+							<div class="flex items-start">
+								<CheckboxOption
+									checked={options.value.search.ytHandling}
+									description={"Special handling of YouTube video links"}
+									note={[
+										[
+											"If checked, search using the video ID only instead of the full URL to find all variations of YouTube links e.g. ",
+											{ text: "youtu.be/dQw4w9WgXcQ", type: "code" },
+											", ",
+											{
+												text: "youtube.com/watch?v=dQw4w9WgXcQ",
+												type: "code",
+											},
+											", and more.",
+										],
+									]}
+									setSimpleChecked={(checked) =>
+										setOptions("value", "search", "ytHandling", checked)
+									}
+								/>
 							</div>
 						</div>
 						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />
 
-						<h2 class="mt-8 mb-2 text-2xl">Auto-search</h2>
+						<h2 class="mt-5 mb-2 text-2xl">Auto-search</h2>
 						<div class="mb-4">
 							<h3 class="mt-3 mb-2 text-lg">When to run the search?</h3>
-							<div class="w-full">
-								<div class="mb-1.5 flex items-start">
+							<div class="mb-4 flex flex-col gap-y-2.5">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.updated}
 										description={
@@ -260,7 +292,7 @@ function Options() {
 										type="complex"
 									/>
 								</div>
-								<div class="mb-1.5 flex items-start">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.activated}
 										description={"Every time you go to an already open tab."}
@@ -296,8 +328,8 @@ function Options() {
 							</div>
 
 							<h3 class="mt-3 mb-2 text-lg">Exact vs non-exact</h3>
-							<div class="w-full">
-								<div class="mb-1.5 flex items-start">
+							<div class="mb-4 flex flex-col gap-y-2.5">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.retryExact}
 										description={
@@ -310,7 +342,7 @@ function Options() {
 									/>
 								</div>
 
-								<div class="mt-2 mb-1.5 flex items-start">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.alwaysBothExactAndNonExact}
 										description={
@@ -330,8 +362,8 @@ function Options() {
 							</div>
 
 							<h3 class="mt-3 mb-2 text-lg">Retry</h3>
-							<div class="w-full">
-								<div class="mb-1.5 flex items-start">
+							<div class="mb-4 flex flex-col gap-y-2.5">
+								<div class="flex items-start">
 									<CheckboxOption
 										checked={options.value.autorun.retryError}
 										description={
@@ -344,7 +376,7 @@ function Options() {
 								</div>
 							</div>
 
-							<h3 class="mt-3 mb-2 text-lg">Display</h3>
+							<h3 class="mt-3 text-lg">Display</h3>
 							<div class="flex w-full items-center">
 								<SelectOption
 									description="Number to show in extension icon"
@@ -420,7 +452,7 @@ function Options() {
 						</div>
 						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />
 
-						<h2 class="mt-8 mb-2 text-2xl">Caching</h2>
+						<h2 class="mt-5 mb-2 text-2xl">Caching</h2>
 						<div class="mb-4">
 							<div class="w-full">
 								<span class="mr-2 whitespace-nowrap">Cache results for</span>
@@ -441,15 +473,14 @@ function Options() {
 									type="number"
 									value={options.value.cache.period}
 								/>
-								<span class="ml-2 whitespace-nowrap">minutes. (Max: 1440)</span>
+								<span class="mb-1.5 ml-2 whitespace-nowrap">
+									minutes. (Max: 1440)
+								</span>
 
 								<div>
 									<Note
 										notes={[
 											["the search button in the popup always bypasses cache."],
-											[
-												"the entire cache is cleared on browser start (not on exit because the Chrome API doesn't provide an event for that)",
-											],
 										]}
 									/>
 								</div>
@@ -457,7 +488,7 @@ function Options() {
 						</div>
 						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />
 
-						<div class="mt-8 flex items-center pb-5">
+						<div class="mt-5 flex items-center pb-5">
 							<div class="mr-4 flex-shrink-0">
 								<button
 									class={

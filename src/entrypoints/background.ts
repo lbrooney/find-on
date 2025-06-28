@@ -163,8 +163,10 @@ export default defineBackground(() => {
 		});
 		const exactMatch = options.search.exactMatch && !isYt;
 		const [redditPosts, hnPosts] = await Promise.allSettled([
-			fetchReddit(urlToSearch, { exactMatch, isYt, tabId }),
-			fetchHN(url, tabId),
+			options.search.sources.reddit
+				? fetchReddit(urlToSearch, { exactMatch, isYt, tabId })
+				: [],
+			options.search.sources.hackernews ? fetchHN(url, tabId) : [],
 		]);
 		if (redditPosts.status === "fulfilled" && hnPosts.status === "fulfilled") {
 			return setResultsBadge(tabId, redditPosts.value, hnPosts.value);

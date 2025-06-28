@@ -116,6 +116,6 @@ export async function setBadge(tabId: number, text: string, color: string) {
 			bgCol,
 		);
 	} catch (args) {
-		console.log(args);
+		console.error(args);
 	}
 }

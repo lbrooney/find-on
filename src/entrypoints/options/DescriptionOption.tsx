@@ -1,6 +1,6 @@
 import { For, Match, Switch } from "solid-js";
 
-type FormatType = { text: string; type: "underline" | "code" };
+type FormatType = { text: string; type: "underline" | "code" | "bold" };
 
 interface FormattedDescriptionProps {
 	format: FormatType;
@@ -8,14 +8,17 @@ interface FormattedDescriptionProps {
 
 function FormattedDescription(props: FormattedDescriptionProps) {
 	return (
-		<Switch>
-			<Match when={props.format.type === "underline"}>
-				<u>{props.format.text}</u>
+		<Switch fallback={props.format.text}>
+			<Match when={props.format.type === "bold"}>
+				<b>{props.format.text}</b>
 			</Match>
 			<Match when={props.format.type === "code"}>
-				<code class="whitespace-nowrap rounded bg-gray-200 px-1 py-0.5 font-mono text-gray-800 dark:bg-gray-700 dark:text-white">
+				<code class="whitespace-nowrap rounded bg-gray-300 px-1 py-0.5 font-mono text-gray-800 dark:bg-gray-700 dark:text-white">
 					{props.format.text}
 				</code>
+			</Match>
+			<Match when={props.format.type === "underline"}>
+				<u>{props.format.text}</u>
 			</Match>
 		</Switch>
 	);
@@ -36,12 +39,9 @@ export function DescriptionOptions(props: DescriptionProps) {
 						{format as unknown as string}
 					</Match>
 					<Match
-						when={
-							(format as unknown as FormatType).text &&
-							(format as unknown as FormatType).type
-						}
+						when={typeof format !== "string" && format.text && format.type}
 					>
-						<FormattedDescription format={format as unknown as FormatType} />
+						<FormattedDescription format={format as FormatType} />
 					</Match>
 				</Switch>
 			)}

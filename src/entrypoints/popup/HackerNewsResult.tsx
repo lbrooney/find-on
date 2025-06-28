@@ -10,7 +10,7 @@ interface HackerNewsResultProp {
 export default function HackerNewsResult(props: HackerNewsResultProp) {
 	return (
 		<div class="flex items-center gap-x-2 rounded-lg bg-neutral-300 p-2 shadow-md transition-colors duration-150 hover:bg-neutral-400 dark:bg-neutral-700 dark:hover:bg-neutral-600">
-			<div class="flex w-24 flex-shrink-0 flex-col gap-y-2">
+			<div class="flex w-24 flex-shrink-0 flex-col gap-y-1">
 				<div class="text-center font-bold text-blue-700 text-lg dark:text-blue-300">
 					{props.post.score}
 				</div>

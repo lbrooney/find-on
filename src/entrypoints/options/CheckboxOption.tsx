@@ -8,6 +8,7 @@ import { Note, type NoteType } from "./Note";
 interface CheckboxOptionProps {
 	checked: boolean;
 	description: string | DescriptionFormatted;
+	disabled?: boolean;
 	align?: boolean;
 	note?: NoteType;
 }
@@ -39,6 +40,7 @@ export function CheckboxOption(
 					"mt-[3px]": finalProps.align,
 					"size-4 shrink-0 mr-2 accent-blue-600 dark:accent-blue-400": true,
 				}}
+				disabled={finalProps.disabled}
 				onChange={(e) => {
 					if (finalProps.type === "simple") {
 						(finalProps as SimpleCheckboxOption).setSimpleChecked(
@@ -66,8 +68,10 @@ export function CheckboxOption(
 					</Switch>
 				</div>
 				<Show when={finalProps.note !== undefined}>
-					{/** biome-ignore lint/style/noNonNullAssertion: just checked */}
-					<Note notes={finalProps.note!} />
+					<div class={"mt-0.5 flex flex-col gap-y-0.5"}>
+						{/** biome-ignore lint/style/noNonNullAssertion: just checked */}
+						<Note notes={finalProps.note!} />
+					</div>
 				</Show>
 			</div>
 		</>

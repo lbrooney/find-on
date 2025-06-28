@@ -13,6 +13,8 @@ import {
 } from "solid-js";
 import { createStore } from "solid-js/store";
 import { browser } from "wxt/browser";
+import RedditIcon from "@/components/RedditIcon";
+import YCIcon from "@/components/YCombinator";
 import { convertHitsToPostObjects, fetchHnHits } from "@/lib/hn";
 import { DEFAULT_POPUP_OPTIONS, fieldMappings } from "@/lib/query";
 import { convertRedditToPostObjects, findOnReddit } from "@/lib/reddit";
@@ -37,12 +39,21 @@ import {
 import HackerNewsResult from "./HackerNewsResult";
 import RedditResult from "./RedditResult";
 
+const optionsDisabled: PopupOptions = {
+	...DEFAULT_POPUP_OPTIONS,
+	search: {
+		...DEFAULT_POPUP_OPTIONS.search,
+		sources: {
+			hackernews: false,
+			reddit: false,
+		},
+	},
+};
+
 export default function Popup() {
 	const [options, setOptions] = createStore<{ value: PopupOptions }>({
-		value: DEFAULT_POPUP_OPTIONS,
+		value: optionsDisabled,
 	});
-
-	const [mounted, setMounted] = createSignal(false);
 
 	const [urlInput, setUrlInput] = createSignal<string>("");
 	const [tabId, setTabId] = createSignal<number | undefined>(undefined);
@@ -52,63 +63,78 @@ export default function Popup() {
 	const [ytChoiceVisible, setYtChoiceVisible] = createSignal(false);
 	const [ytVidIdDisplay, setYtVidIdDisplay] = createSignal("");
 
-	const [statusMessage, setStatusMessage] = createSignal("");
-
-	const [data, { refetch }] = createResource<ProcessedRedditPost[], boolean>(
-		() => mounted(),
-		async (_, { refetching }) => {
+	const [redditPosts, { refetch: refetchReddit }] = createResource<
+		ProcessedRedditPost[],
+		boolean
+	>(
+		() => options.value.search.sources.reddit,
+		async (_, { value, refetching }) => {
+			if (!refetching && value?.length !== 0) {
+				return value as ProcessedRedditPost[];
+			}
 			const url = urlInput();
 			const { urlToSearch, isYt } = processUrl(url, {
 				handleYtSpecial: options.value.search.ytHandling,
 				ignoreQueryString: options.value.search.ignoreQs,
 			});
 
-			const [reddit, hn] = await Promise.allSettled([
-				findOnReddit(
-					urlToSearch,
-					!refetching,
-					options.value.search.exactMatch && !isYt,
-				),
-				fetchHnHits(url, !refetching),
-			]);
-			const posts: ProcessedRedditPost[] = [];
-			let statusMessage = "";
-			if (reddit.status === "fulfilled") {
-				posts.push(...convertRedditToPostObjects(reddit.value.posts));
-			} else {
-				statusMessage = "Failed to fetch Reddit posts. ";
-			}
-			if (hn.status === "fulfilled") {
-				posts.push(...convertHitsToPostObjects(hn.value));
-			} else {
-				statusMessage = "Failed to fetch Hacker News Posts.";
-			}
-			const tab = tabId();
-			if (tab) {
-				const color = BADGE_COLORS.success;
-				if (options.value.autorun.badgeContent === "num_comments") {
-					void setBadge(
-						tab,
-						numToBadgeText(posts.reduce((a, p) => a + p.num_comments, 0)),
-						color,
-					);
-				} else {
-					void setBadge(tab, numToBadgeText(posts.length), color);
-				}
-			}
-
-			setStatusMessage(statusMessage);
-			return posts;
+			const reddit = await findOnReddit(
+				urlToSearch,
+				!refetching,
+				options.value.search.exactMatch && !isYt,
+			);
+			return convertRedditToPostObjects(reddit.posts);
 		},
 		{
 			initialValue: [],
 		},
 	);
 
+	const [hnPosts, { refetch: refetchHN }] = createResource<
+		ProcessedHackerNewsPost[],
+		boolean
+	>(
+		() => options.value.search.sources.hackernews,
+		async (_, { value, refetching }) => {
+			if (!refetching && value?.length !== 0) {
+				return value as ProcessedHackerNewsPost[];
+			}
+			const url = urlInput();
+
+			const hn = await fetchHnHits(url, !refetching);
+			return convertHitsToPostObjects(hn);
+		},
+		{
+			initialValue: [],
+		},
+	);
+
+	createMemo(() => {
+		const tab = tabId();
+		if (tab) {
+			const posts = ([] as ProcessedRedditPost[])
+				.concat(options.value.search.sources.reddit ? redditPosts.latest : [])
+				.concat(options.value.search.sources.hackernews ? hnPosts.latest : []);
+
+			if (options.value.autorun.badgeContent === "num_comments") {
+				void setBadge(
+					tab,
+					numToBadgeText(posts.reduce((a, p) => a + p.num_comments, 0)),
+					BADGE_COLORS.success,
+				);
+			} else {
+				void setBadge(tab, numToBadgeText(posts.length), BADGE_COLORS.success);
+			}
+		}
+	});
+
 	const sortedResults = createMemo(() => {
+		const posts = ([] as ProcessedRedditPost[])
+			.concat(options.value.search.sources.reddit ? redditPosts.latest : [])
+			.concat(options.value.search.sources.hackernews ? hnPosts.latest : []);
 		if (options.value.popup.results.orderBy === "subreddit") {
 			// Sort alphabetically for subreddit
-			return data().toSorted(
+			return posts.sort(
 				(a, b) =>
 					a.subreddit.localeCompare(b.subreddit) *
 					(options.value.popup.results.desc ? -1 : 1),
@@ -139,20 +165,17 @@ export default function Popup() {
 			}
 			return 0; // Fallback if types are mixed or unexpected
 		};
-		return data().toSorted(comparator);
+		return posts.sort(comparator);
 	});
 
 	onMount(async () => {
 		try {
-			setOptions("value", await getOptions(DEFAULT_POPUP_OPTIONS));
 			const tab = await getCurrentTab();
 			setUrlInput(tab.url ?? "");
 			setTabId(tab.id);
-
-			setMounted(true);
+			setOptions("value", await getOptions(DEFAULT_POPUP_OPTIONS));
 		} catch (e) {
 			console.error("Initialization error:", e);
-			setStatusMessage("Error during initialization.");
 		}
 	});
 
@@ -210,10 +233,10 @@ export default function Popup() {
 
 	return (
 		<div class="min-h-screen bg-neutral-200 p-4 font-sans text-black antialiased dark:bg-neutral-800 dark:text-white">
-			<div class="container mx-auto min-w-lg space-y-4">
-				<div class="flex flex-col">
-					<form class="space-y-4">
-						<div class="flex flex-col">
+			<div class="container mx-auto flex min-w-lg flex-col gap-y-2">
+				<div class="flex flex-col gap-y-1">
+					<form class="flex flex-col gap-y-1">
+						<div class="flex flex-col gap-y-1">
 							<div class="flex overflow-hidden rounded-md shadow-md">
 								<input
 									class="flex-1 bg-neutral-300 p-2 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-neutral-700 dark:placeholder-neutral-400"
@@ -224,15 +247,14 @@ export default function Popup() {
 								/>
 								<button
 									class="cursor-pointer bg-blue-600 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none disabled:cursor-progress disabled:bg-blue-400 dark:disabled:bg-blue-800"
-									disabled={data.loading}
+									disabled={redditPosts.loading || hnPosts.loading}
 									onClick={() => {
-										setStatusMessage("");
 										const tab = tabId();
 										if (tab) {
 											void removeBadge(tab);
 										}
-
-										refetch();
+										refetchReddit();
+										refetchHN();
 									}}
 									type="button"
 								>
@@ -241,7 +263,7 @@ export default function Popup() {
 							</div>
 
 							<Show when={ytChoiceVisible()}>
-								<div class="mt-2 flex items-center">
+								<div class="flex items-center">
 									<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
 										<input
 											checked={options.value.search.ytHandling}
@@ -267,7 +289,7 @@ export default function Popup() {
 							</Show>
 
 							<Show when={searchOptionsVisibility()}>
-								<div class="mt-2 flex items-center">
+								<div class="flex items-center">
 									<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
 										<input
 											checked={options.value.search.exactMatch}
@@ -282,17 +304,10 @@ export default function Popup() {
 											}
 											type="checkbox"
 										/>
-										<span class="ml-2">
-											exact match
-											<Show when={data().length !== 0}>
-												<span class="ml-2 text-neutral-600 text-sm dark:text-neutral-400">
-													| <i class="font-semibold">{data().length} matches</i>
-												</span>
-											</Show>
-										</span>
+										<span class="ml-2">exact match</span>
 									</label>
 								</div>
-								<div class="mt-2 flex items-center">
+								<div class="flex items-center">
 									<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
 										<input
 											checked={options.value.search.ignoreQs}
@@ -313,102 +328,160 @@ export default function Popup() {
 							</Show>
 						</div>
 					</form>
+					<Switch>
+						<Match when={redditPosts.loading}>
+							<div>Loading Reddit posts...</div>
+						</Match>
+						<Match when={redditPosts.error}>
+							<div>Errored loading Reddit posts...</div>
+						</Match>
+					</Switch>
+					<Switch>
+						<Match when={hnPosts.loading}>
+							<div>Loading Hacker News posts...</div>
+						</Match>
+						<Match when={hnPosts.error}>
+							<div>Errored loading Hacker News posts...</div>
+						</Match>
+					</Switch>
 				</div>
-
-				<div class="mt-4 text-center text-neutral-600 text-sm dark:text-neutral-400">
-					{statusMessage()}
-				</div>
-
-				<Switch fallback={"No results found..."}>
-					<Match when={data.loading}>Loading...</Match>
-					<Match when={data.error}>Errored...</Match>
-					<Match when={data.state === "ready" && data().length !== 0}>
-						<div class="flex flex-col gap-4">
-							<div class="flex items-center justify-between text-neutral-600 text-sm dark:text-neutral-400">
-								<div class="flex items-center">
-									<span class="font-semibold text-neutral-900 dark:text-neutral-300">
-										{data().length} {pluralize("result", data().length || 0)}
-									</span>
-								</div>
-								<div class="flex items-center space-x-2">
-									<span class="text-neutral-600 dark:text-neutral-400">
-										sort
-									</span>
-									<select
-										class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-										onInput={(e) =>
-											setOptions(
-												"value",
-												"popup",
-												"results",
-												"orderBy",
-												e.currentTarget.value as OrderBy,
-											)
-										}
-										value={options.value.popup.results.orderBy}
-									>
-										<option value="score">score</option>
-										<option value="comments">comments</option>
-										<option value="age">age</option>
-										<option value="subreddit">subreddit</option>
-									</select>
-									<button
-										aria-label={`Sort ${options.value.popup.results.desc ? "ascending" : "descending"}`}
-										class="sort-order rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 transition-colors duration-200 hover:bg-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600"
-										onClick={() =>
-											setOptions(
-												"value",
-												"popup",
-												"results",
-												"desc",
-												(desc) => !desc,
-											)
-										}
-										type="button"
-									>
-										<svg
-											class="size-4 transition-all"
-											classList={{
-												"-rotate-180": options.value.popup.results.desc,
-											}}
-											fill="currentColor"
-											viewBox="0 0 20 20"
-											xmlns="http://www.w3.org/2000/svg"
-										>
-											<title>Change Sort Direction</title>
-											<path
-												clip-rule="evenodd"
-												d="M10 18a.75.75 0 01-.75-.75V4.66L7.3 6.95a.75.75 0 01-1.1-1.02l3.25-3.5a.75.75 0 011.1 0l3.25 3.5a.75.75 0 01-1.1 1.02L10.75 4.66v12.59c0 .41-.34.75-.75.75z"
-												fill-rule="evenodd"
-											/>
-										</svg>
-									</button>
-								</div>
-							</div>
-							<div class="space-y-3">
-								<For each={sortedResults()}>
-									{(post) => (
-										<Switch>
-											<Match when={post.subreddit === HACKER_NEWS_SUBREDDIT}>
-												<HackerNewsResult
-													handleLinkClick={handleLinkClick}
-													post={post as ProcessedHackerNewsPost}
-												/>
-											</Match>
-											<Match when={post.subreddit !== HACKER_NEWS_SUBREDDIT}>
-												<RedditResult
-													handleLinkClick={handleLinkClick}
-													post={post}
-													redditURL={`https://${options.value.oldReddit ? "old." : ""}reddit.com`}
-												/>
-											</Match>
-										</Switch>
-									)}
-								</For>
-							</div>
+				<div class="flex flex-col gap-y-2">
+					<div class="flex items-center justify-between text-neutral-600 text-sm dark:text-neutral-400">
+						<div class="flex items-center gap-x-2">
+							<select
+								class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
+								onInput={(e) => {
+									setOptions(
+										"value",
+										"search",
+										"sources",
+										"hackernews",
+										e.currentTarget.value === "all" ||
+											e.currentTarget.value === "hackernews",
+									);
+									setOptions(
+										"value",
+										"search",
+										"sources",
+										"reddit",
+										e.currentTarget.value === "all" ||
+											e.currentTarget.value === "reddit",
+									);
+								}}
+								value={
+									options.value.search.sources.reddit &&
+									options.value.search.sources.hackernews
+										? "all"
+										: options.value.search.sources.hackernews
+											? "hackernews"
+											: "reddit"
+								}
+							>
+								<option value="all">All</option>
+								<option value="reddit">Reddit</option>
+								<option value="hackernews">Hacker News</option>
+							</select>
+							<span class="text-neutral-600 dark:text-neutral-400">
+								sources
+							</span>
 						</div>
-					</Match>
-				</Switch>
+						<div class="flex items-center gap-x-2">
+							<span class="text-neutral-600 dark:text-neutral-400">sort</span>
+							<select
+								class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
+								onInput={(e) =>
+									setOptions(
+										"value",
+										"popup",
+										"results",
+										"orderBy",
+										e.currentTarget.value as OrderBy,
+									)
+								}
+								value={options.value.popup.results.orderBy}
+							>
+								<option value="score">score</option>
+								<option value="comments">comments</option>
+								<option value="age">age</option>
+								<option value="subreddit">subreddit</option>
+							</select>
+							<button
+								aria-label={`Sort ${options.value.popup.results.desc ? "ascending" : "descending"}`}
+								class="sort-order rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 transition-colors duration-200 hover:bg-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600"
+								onClick={() =>
+									setOptions(
+										"value",
+										"popup",
+										"results",
+										"desc",
+										(desc) => !desc,
+									)
+								}
+								type="button"
+							>
+								<svg
+									class="size-4 transition-all"
+									classList={{
+										"-rotate-180": options.value.popup.results.desc,
+									}}
+									fill="currentColor"
+									viewBox="0 0 20 20"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<title>Change Sort Direction</title>
+									<path
+										clip-rule="evenodd"
+										d="M10 18a.75.75 0 01-.75-.75V4.66L7.3 6.95a.75.75 0 01-1.1-1.02l3.25-3.5a.75.75 0 011.1 0l3.25 3.5a.75.75 0 01-1.1 1.02L10.75 4.66v12.59c0 .41-.34.75-.75.75z"
+										fill-rule="evenodd"
+									/>
+								</svg>
+							</button>
+						</div>
+					</div>
+					<Show when={sortedResults().length !== 0}>
+						<div class="flex items-center gap-x-0.5">
+							<span class="font-semibold text-neutral-900 dark:text-neutral-300">
+								{sortedResults().length}{" "}
+								{pluralize("result", sortedResults().length)}
+							</span>
+							<Show when={options.value.search.sources.reddit}>
+								<span>|</span>
+								<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
+									{redditPosts.latest.length} <RedditIcon />
+									{pluralize("thread", redditPosts.latest.length)}
+								</span>
+							</Show>
+							<Show when={options.value.search.sources.hackernews}>
+								<span>|</span>
+								<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
+									{hnPosts.latest.length} <YCIcon class="rounded-sm" />
+									{pluralize("hit", hnPosts.latest.length)}
+								</span>
+							</Show>
+						</div>
+						<div class="flex flex-col gap-y-3">
+							<For each={sortedResults()}>
+								{(post) => (
+									<Switch>
+										<Match when={post.subreddit === HACKER_NEWS_SUBREDDIT}>
+											<HackerNewsResult
+												handleLinkClick={handleLinkClick}
+												post={post as ProcessedHackerNewsPost}
+											/>
+										</Match>
+										<Match when={post.subreddit !== HACKER_NEWS_SUBREDDIT}>
+											<RedditResult
+												handleLinkClick={handleLinkClick}
+												post={post}
+												redditURL={`https://${options.value.oldReddit ? "old." : ""}reddit.com`}
+											/>
+										</Match>
+									</Switch>
+								)}
+							</For>
+						</div>
+					</Show>
+				</div>
 			</div>
 		</div>
 	);

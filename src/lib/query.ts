@@ -7,6 +7,7 @@ import type {
 	PopupOptions,
 	PopupUIOptions,
 	SearchParamOptions,
+	Sources,
 } from "@/types/options";
 import type { ProcessedRedditPost } from "@/types/shared";
 
@@ -30,9 +31,15 @@ const DEFAULT_POPUP_UI_OPTIONS: PopupUIOptions = {
 	},
 };
 
+export const DEFAULT_SOURCE_OPTIONS: Sources = {
+	hackernews: true,
+	reddit: true,
+};
+
 const DEFAULT_SEARCH_PARAM_OPTIONS: SearchParamOptions = {
 	exactMatch: true,
 	ignoreQs: true,
+	sources: DEFAULT_SOURCE_OPTIONS,
 	ytHandling: true,
 };
 
