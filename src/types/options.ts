@@ -15,11 +15,11 @@ export interface Sources {
 }
 
 export interface SearchParamOptions {
-		exactMatch: boolean;
-		ignoreQs: boolean;
-		sources: Sources;
-		ytHandling: boolean;
-	}
+	exactMatch: boolean;
+	ignoreQs: boolean;
+	sources: Sources;
+	ytHandling: boolean;
+}
 
 export interface BackgroundOptions {
 	autorun: AutorunOptions;
