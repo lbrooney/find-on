@@ -1,6 +1,7 @@
 import "@/assets/index.css";
 
 import {
+	batch,
 	createEffect,
 	createMemo,
 	createResource,
@@ -14,6 +15,7 @@ import {
 import { createStore } from "solid-js/store";
 import { browser } from "wxt/browser";
 import RedditIcon from "@/components/RedditIcon";
+import Settings from "@/components/SettingsIcon";
 import YCIcon from "@/components/YCombinator";
 import { convertHitsToPostObjects, fetchHnHits } from "@/lib/hn";
 import { DEFAULT_POPUP_OPTIONS, fieldMappings } from "@/lib/query";
@@ -125,6 +127,21 @@ export default function Popup() {
 			} else {
 				void setBadge(tab, numToBadgeText(posts.length), BADGE_COLORS.success);
 			}
+		}
+	});
+
+	const source = createMemo(() => {
+		if (
+			options.value.search.sources.reddit &&
+			options.value.search.sources.hackernews
+		) {
+			return "all";
+		} else if (options.value.search.sources.hackernews) {
+			return "hackernews";
+		} else if (options.value.search.sources.reddit) {
+			return "reddit";
+		} else {
+			return "";
 		}
 	});
 
@@ -261,89 +278,83 @@ export default function Popup() {
 									Search
 								</button>
 							</div>
+							<div class="flex items-center justify-between">
+								<div class="flex flex-col gap-y-1">
+									<Show when={ytChoiceVisible()}>
+										<div class="flex items-center">
+											<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
+												<input
+													checked={options.value.search.ytHandling}
+													class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
+													onChange={(e) =>
+														setOptions(
+															"value",
+															"search",
+															"ytHandling",
+															e.currentTarget.checked,
+														)
+													}
+													type="checkbox"
+												/>
+												<span class="ml-2">
+													search by video ID{" "}
+													<span class="font-bold text-neutral-900 dark:text-neutral-100">
+														'{ytVidIdDisplay()}'
+													</span>
+												</span>
+											</label>
+										</div>
+									</Show>
 
-							<Show when={ytChoiceVisible()}>
-								<div class="flex items-center">
-									<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-										<input
-											checked={options.value.search.ytHandling}
-											class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-											onChange={(e) =>
-												setOptions(
-													"value",
-													"search",
-													"ytHandling",
-													e.currentTarget.checked,
-												)
-											}
-											type="checkbox"
-										/>
-										<span class="ml-2">
-											search by video ID{" "}
-											<span class="font-bold text-neutral-900 dark:text-neutral-100">
-												'{ytVidIdDisplay()}'
-											</span>
-										</span>
-									</label>
+									<Show when={searchOptionsVisibility()}>
+										<div class="flex items-center">
+											<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
+												<input
+													checked={options.value.search.exactMatch}
+													class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
+													onChange={(e) =>
+														setOptions(
+															"value",
+															"search",
+															"exactMatch",
+															e.currentTarget.checked,
+														)
+													}
+													type="checkbox"
+												/>
+												<span class="ml-2">exact match</span>
+											</label>
+										</div>
+										<div class="flex items-center">
+											<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
+												<input
+													checked={options.value.search.ignoreQs}
+													class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
+													onChange={(e) =>
+														setOptions(
+															"value",
+															"search",
+															"ignoreQs",
+															e.currentTarget.checked,
+														)
+													}
+													type="checkbox"
+												/>
+												<span class="ml-2">ignore querystring</span>
+											</label>
+										</div>
+									</Show>
 								</div>
-							</Show>
-
-							<Show when={searchOptionsVisibility()}>
-								<div class="flex items-center">
-									<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-										<input
-											checked={options.value.search.exactMatch}
-											class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-											onChange={(e) =>
-												setOptions(
-													"value",
-													"search",
-													"exactMatch",
-													e.currentTarget.checked,
-												)
-											}
-											type="checkbox"
-										/>
-										<span class="ml-2">exact match</span>
-									</label>
-								</div>
-								<div class="flex items-center">
-									<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-										<input
-											checked={options.value.search.ignoreQs}
-											class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-											onChange={(e) =>
-												setOptions(
-													"value",
-													"search",
-													"ignoreQs",
-													e.currentTarget.checked,
-												)
-											}
-											type="checkbox"
-										/>
-										<span class="ml-2">ignore querystring</span>
-									</label>
-								</div>
-							</Show>
+								<a
+									href="/options.html"
+									rel="noopener noreferrer"
+									target="_blank"
+								>
+									<Settings height={"1.5em"} width={"1.5em"} />
+								</a>
+							</div>
 						</div>
 					</form>
-					<Switch>
-						<Match when={redditPosts.loading}>
-							<div>Loading Reddit posts...</div>
-						</Match>
-						<Match when={redditPosts.error}>
-							<div>Errored loading Reddit posts...</div>
-						</Match>
-					</Switch>
-					<Switch>
-						<Match when={hnPosts.loading}>
-							<div>Loading Hacker News posts...</div>
-						</Match>
-						<Match when={hnPosts.error}>
-							<div>Errored loading Hacker News posts...</div>
-						</Match>
-					</Switch>
 				</div>
 				<div class="flex flex-col gap-y-2">
 					<div class="flex items-center justify-between text-neutral-600 text-sm dark:text-neutral-400">
@@ -351,31 +362,26 @@ export default function Popup() {
 							<select
 								class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
 								onInput={(e) => {
-									setOptions(
-										"value",
-										"search",
-										"sources",
-										"hackernews",
-										e.currentTarget.value === "all" ||
-											e.currentTarget.value === "hackernews",
-									);
-									setOptions(
-										"value",
-										"search",
-										"sources",
-										"reddit",
-										e.currentTarget.value === "all" ||
-											e.currentTarget.value === "reddit",
-									);
+									batch(() => {
+										setOptions(
+											"value",
+											"search",
+											"sources",
+											"hackernews",
+											e.currentTarget.value === "all" ||
+												e.currentTarget.value === "hackernews",
+										);
+										setOptions(
+											"value",
+											"search",
+											"sources",
+											"reddit",
+											e.currentTarget.value === "all" ||
+												e.currentTarget.value === "reddit",
+										);
+									});
 								}}
-								value={
-									options.value.search.sources.reddit &&
-									options.value.search.sources.hackernews
-										? "all"
-										: options.value.search.sources.hackernews
-											? "hackernews"
-											: "reddit"
-								}
+								value={source()}
 							>
 								<option value="all">All</option>
 								<option value="reddit">Reddit</option>
@@ -438,6 +444,22 @@ export default function Popup() {
 							</button>
 						</div>
 					</div>
+					<Switch>
+						<Match when={redditPosts.loading}>
+							<div>Loading Reddit posts...</div>
+						</Match>
+						<Match when={redditPosts.error}>
+							<div>Errored loading Reddit posts...</div>
+						</Match>
+					</Switch>
+					<Switch>
+						<Match when={hnPosts.loading}>
+							<div>Loading Hacker News posts...</div>
+						</Match>
+						<Match when={hnPosts.error}>
+							<div>Errored loading Hacker News posts...</div>
+						</Match>
+					</Switch>
 					<Show when={sortedResults().length !== 0}>
 						<div class="flex items-center gap-x-0.5">
 							<span class="font-semibold text-neutral-900 dark:text-neutral-300">
