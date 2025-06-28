@@ -333,7 +333,7 @@ function Options() {
 									<CheckboxOption
 										checked={options.value.autorun.retryExact}
 										description={
-											"Automaticaly do a non-exact search if exact search returns zero results."
+											"Automatically do a non-exact search if exact search returns zero results."
 										}
 										note={"Only applies to auto-search."}
 										setSimpleChecked={(checked) =>
@@ -346,7 +346,7 @@ function Options() {
 									<CheckboxOption
 										checked={options.value.autorun.alwaysBothExactAndNonExact}
 										description={
-											"Always automaticaly do both an exact search and a non-exact search."
+											"Always automatically search exact and non-exact."
 										}
 										note={"Only applies to auto-search."}
 										setSimpleChecked={(checked) =>
