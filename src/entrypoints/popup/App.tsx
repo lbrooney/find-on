@@ -111,25 +111,6 @@ export default function Popup() {
 		},
 	);
 
-	createMemo(() => {
-		const tab = tabId();
-		if (tab) {
-			const posts = ([] as ProcessedRedditPost[])
-				.concat(options.value.search.sources.reddit ? redditPosts.latest : [])
-				.concat(options.value.search.sources.hackernews ? hnPosts.latest : []);
-
-			if (options.value.autorun.badgeContent === "num_comments") {
-				void setBadge(
-					tab,
-					numToBadgeText(posts.reduce((a, p) => a + p.num_comments, 0)),
-					BADGE_COLORS.success,
-				);
-			} else {
-				void setBadge(tab, numToBadgeText(posts.length), BADGE_COLORS.success);
-			}
-		}
-	});
-
 	const source = createMemo(() => {
 		if (
 			options.value.search.sources.reddit &&
@@ -183,6 +164,23 @@ export default function Popup() {
 			return 0; // Fallback if types are mixed or unexpected
 		};
 		return posts.sort(comparator);
+	});
+
+	createEffect(() => {
+		const tab = tabId();
+		if (tab) {
+			const posts = sortedResults();
+
+			if (options.value.autorun.badgeContent === "num_comments") {
+				void setBadge(
+					tab,
+					numToBadgeText(posts.reduce((a, p) => a + p.num_comments, 0)),
+					BADGE_COLORS.success,
+				);
+			} else {
+				void setBadge(tab, numToBadgeText(posts.length), BADGE_COLORS.success);
+			}
+		}
 	});
 
 	onMount(async () => {
