@@ -1,6 +1,15 @@
 import "@/assets/index.css";
 
-import { batch, createSignal, For, Match, onMount, Switch } from "solid-js";
+import { dequal } from "dequal";
+import {
+	batch,
+	createSignal,
+	For,
+	Match,
+	onMount,
+	Show,
+	Switch,
+} from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import { browser } from "wxt/browser";
 import { DEFAULT_OPTIONS } from "@/lib/query";
@@ -23,12 +32,14 @@ function Options() {
 	const [options, setOptions] = createStore<{ value: AllOptions }>({
 		value: DEFAULT_OPTIONS,
 	});
+	const [originalOptions, setOriginalOptions] = createSignal(DEFAULT_OPTIONS);
 	const [statusMessage, setStatusMessage] = createSignal("");
 	const [statusClass, setStatusClass] = createSignal("");
 
 	const saveOptions = async () => {
 		try {
 			await updateOptions(unwrap(options.value));
+			setOriginalOptions(JSON.parse(JSON.stringify(options.value)));
 			notifySuccess();
 		} catch (_e) {
 			notifyFailure();
@@ -50,7 +61,9 @@ function Options() {
 	};
 
 	onMount(async () => {
-		setOptions({ value: await getAllOptions() });
+		const userOptions = unwrap(await getAllOptions());
+		setOptions({ value: userOptions });
+		setOriginalOptions(JSON.parse(JSON.stringify(userOptions)));
 		setMounted(true);
 	});
 
@@ -174,7 +187,7 @@ function Options() {
 
 								<div class="flex items-start">
 									<CheckboxOption
-										checked={options.value.popup.newtabInBg}
+										checked={options.value.popup.newtabInBgAdjacent}
 										description={
 											"If opening a new tab in the background, put it right next to the current tab instead of at the end."
 										}
@@ -197,7 +210,7 @@ function Options() {
 						<div class="mb-4 flex flex-col gap-y-2.5">
 							<div class="flex items-start">
 								<CheckboxOption
-									checked={options.value.popup.newtabInBg}
+									checked={options.value.search.exactMatch}
 									description={"Exact match (Reddit only)"}
 									note={[
 										[
@@ -216,7 +229,7 @@ function Options() {
 										],
 									]}
 									setSimpleChecked={(checked) =>
-										setOptions("value", "popup", "newtabInBgAdjacent", checked)
+										setOptions("value", "search", "exactMatch", checked)
 									}
 								/>
 							</div>
@@ -512,6 +525,22 @@ function Options() {
 						</div>
 					</form>
 				</div>
+				<Show when={!dequal(options.value, originalOptions())}>
+					<div class="fixed right-4 bottom-4 flex w-96 items-center justify-between rounded-lg bg-neutral-200 px-3 py-3 text-center text-sm opacity-100 starting:opacity-0 shadow-2xl duration-500 dark:bg-neutral-700">
+						<span>You have unsaved changes.</span>
+						<button
+							class="cursor-pointer rounded-md bg-black px-2 py-1 font-semibold text-white text-xs italic dark:bg-white dark:text-black"
+							onClick={() => {
+								setOptions({
+									value: JSON.parse(JSON.stringify(originalOptions())),
+								});
+							}}
+							type="button"
+						>
+							Reset to Default
+						</button>
+					</div>
+				</Show>
 			</Match>
 		</Switch>
 	);
