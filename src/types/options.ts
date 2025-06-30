@@ -21,10 +21,15 @@ export interface SearchParamOptions {
 	ytHandling: boolean;
 }
 
+interface FilterList {
+	type: boolean;
+	filters: string[];
+}
+
 export interface BackgroundOptions {
 	autorun: AutorunOptions;
 	search: SearchParamOptions;
-	blacklist: string[];
+	filterlist: FilterList;
 }
 
 export type OrderBy = "age" | "comments" | "score" | "subreddit";

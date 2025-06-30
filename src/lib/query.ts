@@ -61,7 +61,10 @@ export const DEFAULT_POPUP_OPTIONS: PopupOptions = {
 
 export const DEFAULT_BACKGROUND_OPTIONS: BackgroundOptions = {
 	autorun: DEFAULT_AUTORUN_OPTIONS,
-	blacklist: [],
+	filterlist: {
+		filters: [],
+		type: false,
+	},
 	search: DEFAULT_SEARCH_PARAM_OPTIONS,
 };
 

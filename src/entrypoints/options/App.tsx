@@ -409,58 +409,85 @@ function Options() {
 								/>
 							</div>
 
-							<h3 class="mt-3 mb-2 text-lg">Blacklist</h3>
-							<p class="mb-2">
-								<DescriptionOptions
-									formatted={[
-										"Add a domain ",
-										{ text: "facebook.com", type: "code" },
-										" or ",
-										{ text: "reddit.com/me", type: "code" },
-										" to the blacklist, one per input box. Leave an input empty to delete.",
-										" Auto-search will not run on URLs belonging to these domains.",
-									]}
-								/>
-							</p>
-							<div class="flex w-full flex-col gap-y-2">
-								<For each={options.value.blacklist}>
-									{(item, idx) => (
-										<input
-											class={formControlClasses}
-											onChange={(e) => {
-												batch(() => {
-													setOptions(
-														"value",
-														"blacklist",
-														idx(),
-														e.currentTarget.value,
-													);
-													setOptions("value", "blacklist", (prev) =>
-														prev.filter((val) => val !== ""),
-													);
-												});
-											}}
-											type="text"
-											value={item}
-										/>
-									)}
-								</For>
-								<input
-									class={formControlClasses}
-									onChange={(e) => {
-										if (e.currentTarget.value !== "") {
-											setOptions(
-												"value",
-												"blacklist",
-												options.value.blacklist.length,
-												e.currentTarget.value,
-											);
-											e.currentTarget.value = "";
+							<h3 class="mt-3 mb-2 text-lg">
+								{options.value.filterlist.type ? "Whitelist" : "Blacklist"}
+							</h3>
+							<div class="mb-4 flex flex-col gap-y-2.5">
+								<div class="flex items-start">
+									<CheckboxOption
+										checked={options.value.filterlist.type}
+										description={"Toggle filter mode."}
+										note={[
+											[
+												"Checked means ",
+												{ text: "whitelist", type: "underline" },
+												". Unchecked means ",
+												{ text: "blacklist", type: "underline" },
+												".",
+											],
+										]}
+										setSimpleChecked={(checked) =>
+											setOptions("value", "filterlist", "type", checked)
 										}
-									}}
-									type="text"
-									value={""}
-								/>
+									/>
+								</div>
+								<p class="">
+									<DescriptionOptions
+										formatted={[
+											"Add a domain ",
+											{ text: "facebook.com", type: "code" },
+											" or ",
+											{ text: "reddit.com/me", type: "code" },
+											` to the ${options.value.filterlist.type ? "whitelist" : "blacklist"}, one per input box. Leave an input empty to delete.`,
+											" Auto-search will not run on URLs belonging to these domains.",
+										]}
+									/>
+								</p>
+								<div class="flex w-full flex-col gap-y-2">
+									<For each={options.value.filterlist.filters}>
+										{(item, idx) => (
+											<input
+												class={formControlClasses}
+												onChange={(e) => {
+													batch(() => {
+														setOptions(
+															"value",
+															"filterlist",
+															"filters",
+															idx(),
+															e.currentTarget.value.trim().toLowerCase(),
+														);
+														setOptions(
+															"value",
+															"filterlist",
+															"filters",
+															(prev) => prev.filter((val) => val !== ""),
+														);
+													});
+												}}
+												type="text"
+												value={item}
+											/>
+										)}
+									</For>
+									<input
+										class={formControlClasses}
+										onChange={(e) => {
+											if (e.currentTarget.value.trim() !== "") {
+												setOptions(
+													"value",
+													"filterlist",
+													"filters",
+													options.value.filterlist.filters.length,
+													e.currentTarget.value.trim().toLowerCase(),
+												);
+												e.currentTarget.value = "";
+											}
+										}}
+										type="text"
+										value={""}
+									/>
+								</div>
 							</div>
 						</div>
 						<hr class="my-5 border-gray-200 border-t dark:border-gray-700" />

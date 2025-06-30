@@ -121,13 +121,19 @@ export default defineBackground(() => {
 		return [];
 	}
 
-	function isBlackListed(url: string) {
-		return options.blacklist.some((s) => url.search(s) > -1);
+	function isFiltered(url: string) {
+		return options.filterlist.filters.some((s) => url.search(s) > -1);
 	}
 
 	function isAllowed(url: string) {
 		url = url.toLowerCase();
-		return url.length > 0 && /^https?:\/\//i.test(url) && !isBlackListed(url);
+		// if whitelist and filtered allowed
+		// if blacklist and not filtered allow
+		return (
+			url.length > 0 &&
+			/^https?:\/\//i.test(url) &&
+			options.filterlist.type === isFiltered(url)
+		);
 	}
 
 	async function setResultsBadge(

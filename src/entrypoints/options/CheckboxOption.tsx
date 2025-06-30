@@ -53,20 +53,18 @@ export function CheckboxOption(
 				type="checkbox"
 			/>
 			<div>
-				<div>
-					<Switch>
-						<Match when={typeof finalProps.description === "string"}>
-							{finalProps.description as unknown as string}
-						</Match>
-						<Match when={Array.isArray(finalProps.description)}>
-							<DescriptionOptions
-								formatted={
-									finalProps.description as unknown as DescriptionFormatted
-								}
-							/>
-						</Match>
-					</Switch>
-				</div>
+				<Switch>
+					<Match when={typeof finalProps.description === "string"}>
+						{finalProps.description as unknown as string}
+					</Match>
+					<Match when={Array.isArray(finalProps.description)}>
+						<DescriptionOptions
+							formatted={
+								finalProps.description as unknown as DescriptionFormatted
+							}
+						/>
+					</Match>
+				</Switch>
 				<Show when={finalProps.note !== undefined}>
 					<div class={"mt-0.5 flex flex-col gap-y-0.5"}>
 						{/** biome-ignore lint/style/noNonNullAssertion: just checked */}
