@@ -16,7 +16,7 @@ export default defineConfig({
 			"https://www.reddit.com/api/*",
 			"https://hn.algolia.com/api/v1/search/*",
 		],
-		name: "Find On - Reddit + Hacker News",
+		name: "Find On Reddit + Hacker News",
 		optional_permissions: ["tabs"],
 		permissions: ["activeTab", "storage"],
 	},

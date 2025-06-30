@@ -1,4 +1,4 @@
-# Find On - Reddit + Hacker News
+# Find On Reddit + Hacker News
 Chrome **and** Firefox extension that searches for discussions of the current URL on Reddit and Hacker News.
 
 ## Download
@@ -14,11 +14,10 @@ Chrome **and** Firefox extension that searches for discussions of the current UR
 
 ## Changes from the original & fork
 - Replaced JQuery, Bootstrap, and Handlebars with SolidJS and TailwindCSS
-  - the reimplementation is about 50% smaller in size compared to the original
 - Add support for Firefox
-  - Previously this was not possible as Firefox does not support the Sandbox entrypoint the extension took advantage of for templating
-- Integrate [WXT](https://wxt.dev) to speed up dev and improve DX
-- Convert JS to TS and simplify some logic to improve clarity or extra work
+  - Previously this was not possible as Firefox does not support the Sandbox entrypoint the extension used for templating.
+- Use the [WXT](https://wxt.dev) framework to speed up dev and improve DX
+- Convert JS to TS and simplify some logic to improve clarity or avoid extra work
 - Fetch Reddit and Hacker News posts simultaneously
 - Instead of local storage and clearing on startup, instead use Browser API session storage which handles this automatically
 
@@ -35,3 +34,9 @@ I am primarily a Firefox user and previously was using the following entirely se
 This project is a fork of [AdeelH/find-on-reddit](https://github.com/AdeelH/find-on-reddit) & [JeffreyCA/find-on](https://github.com/JeffreyCA/find-on).
 
 All credit due to them for the original implementation and the following addition of Hacker News respectively.
+
+Reddit icon from https://svgl.app.
+
+YCombinator icon from https://svglogos.dev.
+
+Settings icon from https://opensourcesvgicons.com.

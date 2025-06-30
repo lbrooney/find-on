@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.0.0
+- Add support for Firefox.
+  - Previously this was not possible as Firefox does not support the Sandbox entrypoint the extension used for templating.
+- Replaced JQuery, Bootstrap, and Handlebars with SolidJS and TailwindCSS.
+- Fetch Reddit and Hacker News posts simultaneously.
+- Replace local storage with session storage for cache.
+- Add option toggle between blacklist or whitelist for autoload.
+- Add option to choose which sources to search by default.
+- Add option to filter by source in the popup.
+- Reduce host permissions to just what is required for fetching from APIs.
+- Entering URLs is now done by individual inputs per entry rather than a textbox.
+- Make `tabs` permission optional and upon attemping to enable autoload user will be prompted for permission.
+- Autoload now only runs on `http` and `https` urls.
+- Use the [WXT](https://wxt.dev) framework to speed up dev and improve DX.
+- Convert project from JavaScript to TypeScript.
+- Optimize and simplify some logic.
+
 ## v1.7.1:
 - Add build script
 - Support caching on HN results
@@ -44,7 +61,7 @@
 - Minor improvements to the options page.
 
 ## v1.5.0:
-- Updated Handlebars.js to latest version to 
+- Updated Handlebars.js to latest version to
   include recently released security patch.
 - Fixed bug that caused the popup size/zoom to change on when a hyperlink was
   clicked (https://github.com/AdeelH/find-on-reddit/issues/17,
@@ -61,9 +78,9 @@
 
 ## v1.4.5:
 - added option to sort search results
-  - can sort on score, comments, age and 
+  - can sort on score, comments, age and
     subreddit
-  - default sorting preference can be set 
+  - default sorting preference can be set
     in the options
 - minor improvements
 
@@ -75,30 +92,30 @@
 
 ## v1.4.1:
 - reduced extension size
-- added 'exact match' option to 
-  toggle between search and info 
+- added 'exact match' option to
+  toggle between search and info
   API endpoints
-- default options for search (exact matching, 
-  query-string, YT handling) can now be set 
+- default options for search (exact matching,
+  query-string, YT handling) can now be set
   on the options page
-- added option to allow automatic non-exact 
-  search if exact search returns 0 results 
+- added option to allow automatic non-exact
+  search if exact search returns 0 results
   (default: enabled)
-- added option to allow automatic retry in 
-  case of server/network error 
+- added option to allow automatic retry in
+  case of server/network error
   (default: enabled)
-- both exact and non-exact search results 
-  are now cached for each URL 
+- both exact and non-exact search results
+  are now cached for each URL
   simultaneously
 - UI improvement: toggling the checkboxes
   in the popup automatically initiates
-  the search without the user needing to 
+  the search without the user needing to
   press the search button
-- UI improvement: automatically uncheck 
+- UI improvement: automatically uncheck
   'ignore query string' if YT video detected
-- UI improvement: clear old badge on 
+- UI improvement: clear old badge on
   URL update
-- added option to post/repost link to Reddit 
+- added option to post/repost link to Reddit
   from the popup
 - other fixes and improvements
 
