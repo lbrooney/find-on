@@ -26,7 +26,7 @@ export default function HackerNewsResult(props: HackerNewsResultProp) {
 					rel="noopener noreferrer"
 					target="_blank"
 				>
-					<span class="post-title">{props.post.title}</span>
+					{props.post.title}
 				</a>
 				<div class="mt-1 flex flex-wrap gap-x-1 text-neutral-600 text-xs dark:text-neutral-400">
 					{/* Comments */}
@@ -39,7 +39,7 @@ export default function HackerNewsResult(props: HackerNewsResultProp) {
 						rel="noopener noreferrer"
 						target="_blank"
 					>
-						<span class="num-comments text-blue-700 dark:text-blue-300">
+						<span class="text-blue-700 dark:text-blue-300">
 							{props.post.num_comments || 0}{" "}
 							{pluralize("comment", props.post.num_comments || 0)}
 						</span>
@@ -47,12 +47,12 @@ export default function HackerNewsResult(props: HackerNewsResultProp) {
 					<span class="text-neutral-500 dark:text-neutral-500">|</span>
 					<span class="text-xs">
 						submitted{" "}
-						<span class="timeago italic" title={props.post.localDate || ""}>
+						<span class="italic" title={props.post.localDate || ""}>
 							{props.post.age || "?"} ago
 						</span>{" "}
 						by{" "}
 						<a
-							class="pop text-blue-700 hover:underline dark:text-blue-300"
+							class="text-blue-700 hover:underline dark:text-blue-300"
 							href={`${HN_URL}/user?id=${props.post.author}`}
 							onClick={(e) =>
 								props.handleLinkClick(

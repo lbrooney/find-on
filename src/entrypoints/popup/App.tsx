@@ -247,261 +247,243 @@ export default function Popup() {
 	};
 
 	return (
-		<div class="min-h-screen bg-neutral-200 p-4 font-sans text-black antialiased dark:bg-neutral-800 dark:text-white">
-			<div class="container mx-auto flex min-w-lg flex-col gap-y-2">
-				<div class="flex flex-col gap-y-1">
-					<form class="flex flex-col gap-y-1">
-						<div class="flex flex-col gap-y-1">
-							<div class="flex overflow-hidden rounded-md shadow-md">
-								<input
-									class="flex-1 bg-neutral-300 p-2 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-neutral-700 dark:placeholder-neutral-400"
-									onInput={(e) => setUrlInput(e.currentTarget.value)}
-									placeholder="url to find..."
-									type="text"
-									value={urlInput()}
-								/>
-								<button
-									class="cursor-pointer bg-blue-600 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none disabled:cursor-progress disabled:bg-blue-400 dark:disabled:bg-blue-800"
-									disabled={redditPosts.loading || hnPosts.loading}
-									onClick={() => {
-										const tab = tabId();
-										if (tab) {
-											void removeBadge(tab);
+		<div class="container mx-auto flex min-w-xl flex-col gap-y-2 bg-neutral-200 p-4 font-sans text-black antialiased dark:bg-neutral-800 dark:text-white">
+			<form class="flex flex-col gap-y-1">
+				<div class="flex overflow-hidden rounded-md shadow-md">
+					<input
+						class="flex-1 bg-neutral-300 p-2 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-neutral-700 dark:placeholder-neutral-400"
+						onInput={(e) => setUrlInput(e.currentTarget.value)}
+						placeholder="url to find..."
+						type="text"
+						value={urlInput()}
+					/>
+					<button
+						class="cursor-pointer bg-blue-600 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none disabled:cursor-progress disabled:bg-blue-400 dark:disabled:bg-blue-800"
+						disabled={redditPosts.loading || hnPosts.loading}
+						onClick={() => {
+							const tab = tabId();
+							if (tab) {
+								void removeBadge(tab);
+							}
+							refetchReddit();
+							refetchHN();
+						}}
+						type="button"
+					>
+						Search
+					</button>
+				</div>
+				<div class="flex items-center justify-between">
+					<div class="flex flex-col gap-y-1">
+						<Show when={ytChoiceVisible()}>
+							<div class="flex items-center">
+								<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
+									<input
+										checked={options.value.search.ytHandling}
+										class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
+										onChange={(e) =>
+											setOptions(
+												"value",
+												"search",
+												"ytHandling",
+												e.currentTarget.checked,
+											)
 										}
-										refetchReddit();
-										refetchHN();
-									}}
-									type="button"
-								>
-									Search
-								</button>
-							</div>
-							<div class="flex items-center justify-between">
-								<div class="flex flex-col gap-y-1">
-									<Show when={ytChoiceVisible()}>
-										<div class="flex items-center">
-											<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-												<input
-													checked={options.value.search.ytHandling}
-													class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-													onChange={(e) =>
-														setOptions(
-															"value",
-															"search",
-															"ytHandling",
-															e.currentTarget.checked,
-														)
-													}
-													type="checkbox"
-												/>
-												<span class="ml-2">
-													search by video ID{" "}
-													<span class="font-bold text-neutral-900 dark:text-neutral-100">
-														'{ytVidIdDisplay()}'
-													</span>
-												</span>
-											</label>
-										</div>
-									</Show>
-
-									<Show when={searchOptionsVisibility()}>
-										<div class="flex items-center">
-											<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-												<input
-													checked={options.value.search.exactMatch}
-													class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-													onChange={(e) =>
-														setOptions(
-															"value",
-															"search",
-															"exactMatch",
-															e.currentTarget.checked,
-														)
-													}
-													type="checkbox"
-												/>
-												<span class="ml-2">exact match</span>
-											</label>
-										</div>
-										<div class="flex items-center">
-											<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-												<input
-													checked={options.value.search.ignoreQs}
-													class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-													onChange={(e) =>
-														setOptions(
-															"value",
-															"search",
-															"ignoreQs",
-															e.currentTarget.checked,
-														)
-													}
-													type="checkbox"
-												/>
-												<span class="ml-2">ignore querystring</span>
-											</label>
-										</div>
-									</Show>
-								</div>
-								<a
-									href="/options.html"
-									rel="noopener noreferrer"
-									target="_blank"
-								>
-									<Settings height={"1.5em"} width={"1.5em"} />
-								</a>
-							</div>
-						</div>
-					</form>
-				</div>
-				<div class="flex flex-col gap-y-2">
-					<div class="flex items-center justify-between text-neutral-600 text-sm dark:text-neutral-400">
-						<div class="flex items-center gap-x-2">
-							<select
-								class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-								onInput={(e) => {
-									batch(() => {
-										setOptions(
-											"value",
-											"search",
-											"sources",
-											"hackernews",
-											e.currentTarget.value === "all" ||
-												e.currentTarget.value === "hackernews",
-										);
-										setOptions(
-											"value",
-											"search",
-											"sources",
-											"reddit",
-											e.currentTarget.value === "all" ||
-												e.currentTarget.value === "reddit",
-										);
-									});
-								}}
-								value={source()}
-							>
-								<option value="all">All</option>
-								<option value="reddit">Reddit</option>
-								<option value="hackernews">Hacker News</option>
-							</select>
-							<span class="text-neutral-600 dark:text-neutral-400">
-								sources
-							</span>
-						</div>
-						<div class="flex items-center gap-x-2">
-							<span class="text-neutral-600 dark:text-neutral-400">sort</span>
-							<select
-								class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-								onInput={(e) =>
-									setOptions(
-										"value",
-										"popup",
-										"results",
-										"orderBy",
-										e.currentTarget.value as OrderBy,
-									)
-								}
-								value={options.value.popup.results.orderBy}
-							>
-								<option value="score">score</option>
-								<option value="comments">comments</option>
-								<option value="age">age</option>
-								<option value="subreddit">subreddit</option>
-							</select>
-							<button
-								aria-label={`Sort ${options.value.popup.results.desc ? "ascending" : "descending"}`}
-								class="sort-order rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 transition-colors duration-200 hover:bg-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600"
-								onClick={() =>
-									setOptions(
-										"value",
-										"popup",
-										"results",
-										"desc",
-										(desc) => !desc,
-									)
-								}
-								type="button"
-							>
-								<svg
-									class="size-4 transition-all"
-									classList={{
-										"-rotate-180": options.value.popup.results.desc,
-									}}
-									fill="currentColor"
-									viewBox="0 0 20 20"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<title>Change Sort Direction</title>
-									<path
-										clip-rule="evenodd"
-										d="M10 18a.75.75 0 01-.75-.75V4.66L7.3 6.95a.75.75 0 01-1.1-1.02l3.25-3.5a.75.75 0 011.1 0l3.25 3.5a.75.75 0 01-1.1 1.02L10.75 4.66v12.59c0 .41-.34.75-.75.75z"
-										fill-rule="evenodd"
+										type="checkbox"
 									/>
-								</svg>
-							</button>
-						</div>
+									<span class="ml-2">
+										search by video ID{" "}
+										<span class="font-bold text-neutral-900 dark:text-neutral-100">
+											'{ytVidIdDisplay()}'
+										</span>
+									</span>
+								</label>
+							</div>
+						</Show>
+
+						<Show when={searchOptionsVisibility()}>
+							<div class="flex items-center">
+								<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
+									<input
+										checked={options.value.search.exactMatch}
+										class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
+										onChange={(e) =>
+											setOptions(
+												"value",
+												"search",
+												"exactMatch",
+												e.currentTarget.checked,
+											)
+										}
+										type="checkbox"
+									/>
+									<span class="ml-2">exact match</span>
+								</label>
+							</div>
+							<div class="flex items-center">
+								<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
+									<input
+										checked={options.value.search.ignoreQs}
+										class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
+										onChange={(e) =>
+											setOptions(
+												"value",
+												"search",
+												"ignoreQs",
+												e.currentTarget.checked,
+											)
+										}
+										type="checkbox"
+									/>
+									<span class="ml-2">ignore querystring</span>
+								</label>
+							</div>
+						</Show>
 					</div>
-					<Switch>
-						<Match when={redditPosts.loading}>
-							<div>Loading Reddit posts...</div>
-						</Match>
-						<Match when={redditPosts.error}>
-							<div>Errored loading Reddit posts...</div>
-						</Match>
-					</Switch>
-					<Switch>
-						<Match when={hnPosts.loading}>
-							<div>Loading Hacker News posts...</div>
-						</Match>
-						<Match when={hnPosts.error}>
-							<div>Errored loading Hacker News posts...</div>
-						</Match>
-					</Switch>
-					<Show when={sortedResults().length !== 0}>
-						<div class="flex items-center gap-x-0.5">
-							<span class="font-semibold text-neutral-900 dark:text-neutral-300">
-								{sortedResults().length}{" "}
-								{pluralize("result", sortedResults().length)}
-							</span>
-							<Show when={options.value.search.sources.reddit}>
-								<span>|</span>
-								<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
-									{redditPosts.latest.length} <RedditIcon />
-									{pluralize("thread", redditPosts.latest.length)}
-								</span>
-							</Show>
-							<Show when={options.value.search.sources.hackernews}>
-								<span>|</span>
-								<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
-									{hnPosts.latest.length} <YCIcon class="rounded-sm" />
-									{pluralize("hit", hnPosts.latest.length)}
-								</span>
-							</Show>
-						</div>
-						<div class="flex flex-col gap-y-3">
-							<For each={sortedResults()}>
-								{(post) => (
-									<Switch>
-										<Match when={post.subreddit === HACKER_NEWS_SUBREDDIT}>
-											<HackerNewsResult
-												handleLinkClick={handleLinkClick}
-												post={post as ProcessedHackerNewsPost}
-											/>
-										</Match>
-										<Match when={post.subreddit !== HACKER_NEWS_SUBREDDIT}>
-											<RedditResult
-												handleLinkClick={handleLinkClick}
-												post={post}
-												redditURL={`https://${options.value.oldReddit ? "old." : ""}reddit.com`}
-											/>
-										</Match>
-									</Switch>
-								)}
-							</For>
-						</div>
-					</Show>
+					<a href="/options.html" rel="noopener noreferrer" target="_blank">
+						<Settings height={"1.5em"} width={"1.5em"} />
+					</a>
 				</div>
+			</form>
+			<div class="flex flex-col gap-y-2">
+				<div class="flex items-center justify-between text-neutral-600 text-sm dark:text-neutral-400">
+					<div class="flex items-center gap-x-2">
+						<select
+							class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
+							onInput={(e) => {
+								batch(() => {
+									setOptions(
+										"value",
+										"search",
+										"sources",
+										"hackernews",
+										e.currentTarget.value === "all" ||
+											e.currentTarget.value === "hackernews",
+									);
+									setOptions(
+										"value",
+										"search",
+										"sources",
+										"reddit",
+										e.currentTarget.value === "all" ||
+											e.currentTarget.value === "reddit",
+									);
+								});
+							}}
+							value={source()}
+						>
+							<option value="all">All</option>
+							<option value="reddit">Reddit</option>
+							<option value="hackernews">Hacker News</option>
+						</select>
+						<span class="text-neutral-600 dark:text-neutral-400">sources</span>
+					</div>
+					<div class="flex items-center gap-x-2">
+						<span class="text-neutral-600 dark:text-neutral-400">sort</span>
+						<select
+							class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
+							onInput={(e) =>
+								setOptions(
+									"value",
+									"popup",
+									"results",
+									"orderBy",
+									e.currentTarget.value as OrderBy,
+								)
+							}
+							value={options.value.popup.results.orderBy}
+						>
+							<option value="score">score</option>
+							<option value="comments">comments</option>
+							<option value="age">age</option>
+							<option value="subreddit">subreddit</option>
+						</select>
+						<button
+							aria-label={`Sort ${options.value.popup.results.desc ? "ascending" : "descending"}`}
+							class="sort-order rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 transition-colors duration-200 hover:bg-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600"
+							onClick={() =>
+								setOptions("value", "popup", "results", "desc", (desc) => !desc)
+							}
+							type="button"
+						>
+							<svg
+								class="size-4 transition-all"
+								classList={{
+									"-rotate-180": options.value.popup.results.desc,
+								}}
+								fill="currentColor"
+								viewBox="0 0 20 20"
+								xmlns="http://www.w3.org/2000/svg"
+							>
+								<title>Change Sort Direction</title>
+								<path
+									clip-rule="evenodd"
+									d="M10 18a.75.75 0 01-.75-.75V4.66L7.3 6.95a.75.75 0 01-1.1-1.02l3.25-3.5a.75.75 0 011.1 0l3.25 3.5a.75.75 0 01-1.1 1.02L10.75 4.66v12.59c0 .41-.34.75-.75.75z"
+									fill-rule="evenodd"
+								/>
+							</svg>
+						</button>
+					</div>
+				</div>
+				<Switch>
+					<Match when={redditPosts.loading}>
+						<div>Loading Reddit posts...</div>
+					</Match>
+					<Match when={redditPosts.error}>
+						<div>Errored loading Reddit posts...</div>
+					</Match>
+				</Switch>
+				<Switch>
+					<Match when={hnPosts.loading}>
+						<div>Loading Hacker News posts...</div>
+					</Match>
+					<Match when={hnPosts.error}>
+						<div>Errored loading Hacker News posts...</div>
+					</Match>
+				</Switch>
+				<Show when={sortedResults().length !== 0}>
+					<div class="flex items-center gap-x-0.5">
+						<span class="font-semibold text-neutral-900 dark:text-neutral-300">
+							{sortedResults().length}{" "}
+							{pluralize("result", sortedResults().length)}
+						</span>
+						<Show when={options.value.search.sources.reddit}>
+							<span>|</span>
+							<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
+								{redditPosts.latest.length} <RedditIcon />
+								{pluralize("thread", redditPosts.latest.length)}
+							</span>
+						</Show>
+						<Show when={options.value.search.sources.hackernews}>
+							<span>|</span>
+							<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
+								{hnPosts.latest.length} <YCIcon class="rounded-sm" />
+								{pluralize("hit", hnPosts.latest.length)}
+							</span>
+						</Show>
+					</div>
+					<div class="flex flex-col gap-y-3">
+						<For each={sortedResults()}>
+							{(post) => (
+								<Switch>
+									<Match when={post.subreddit === HACKER_NEWS_SUBREDDIT}>
+										<HackerNewsResult
+											handleLinkClick={handleLinkClick}
+											post={post as ProcessedHackerNewsPost}
+										/>
+									</Match>
+									<Match when={post.subreddit !== HACKER_NEWS_SUBREDDIT}>
+										<RedditResult
+											handleLinkClick={handleLinkClick}
+											post={post}
+											redditURL={`https://${options.value.oldReddit ? "old." : ""}reddit.com`}
+										/>
+									</Match>
+								</Switch>
+							)}
+						</For>
+					</div>
+				</Show>
 			</div>
 		</div>
 	);
