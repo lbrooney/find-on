@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Zip extensions
+        run: |
+          pnpm zip
+          pnpm zip:firefox
+
+      - name: Upload Chrome Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-zip
+          path: .output/*-chrome.zip
+
+      - name: Upload Firefox Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-zip
+          path: .output/*-firefox.zip
+
+      - name: Upload Firefox Sources Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-sources-zip
+          path: .output/*-sources.zip
+
+      #- name: Submit to stores
+      #  run: |
+      #    pnpm wxt submit \
+      #      --chrome-zip .output/*-chrome.zip \
+      #      --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip
+      #  env:
+      #    CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+      #    CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+      #    CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+      #    CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+      #    FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+      #    FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+      #    FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs: submit
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Chrome Zip Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-zip
+          path: ./artifacts/chrome
+
+      - name: Download Firefox Zip Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firefox-zip
+          path: ./artifacts/firefox
+
+      - name: Download Firefox Sources Zip Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firefox-sources-zip
+          path: ./artifacts/firefox-sources
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: |
+            ./artifacts/chrome/*.zip
+            ./artifacts/firefox/*.zip
+            ./artifacts/firefox-sources/*.zip
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Release ${{ github.ref_name }}
+          tag: ${{ github.ref }}
+          body: |
+            ## Release Notes for ${{ github.ref_name }}
+
+            This release includes the following artifacts:
+
+            *   Chrome Extension
+            *   Firefox Extension
+            *   Firefox Sources (for AMO submission)
+
+            Please see the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for more details.
