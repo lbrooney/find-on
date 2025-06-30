@@ -7,7 +7,7 @@ on:
       - "v*"
 
 jobs:
-  submit:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,6 @@ jobs:
         run: |
           pnpm zip
           pnpm zip:firefox
-          ls .output
 
       - name: Create Release
         uses: ncipollo/release-action@v1
@@ -48,10 +47,10 @@ jobs:
             .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-sources.zip
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: Release ${{ steps.get_version.outputs.VERSION }}
-          tag: ${{ steps.get_version.outputs.VERSION }}
+          name: v${{ steps.get_version.outputs.VERSION }}
+          tag: v${{ steps.get_version.outputs.VERSION }}
           body: |
-            ## Release Notes for ${{ steps.get_version.outputs.VERSION }}
+            ## Release Notes for v${{ steps.get_version.outputs.VERSION }}
 
             This release includes the following artifacts:
 
@@ -59,7 +58,7 @@ jobs:
             *   Firefox Extension
             *   Firefox Sources (for AMO submission)
 
-            Please see the [commit history](https://github.com/${{ github.repository }}/commits/${{ steps.get_version.outputs.VERSION }}) for more details.
+            Please see the [commit history](https://github.com/${{ github.repository }}/commits/v${{ steps.get_version.outputs.VERSION }}) for more details.
 
       #- name: Submit to stores
       #  run: |
