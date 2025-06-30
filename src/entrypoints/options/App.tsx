@@ -564,7 +564,7 @@ function Options() {
 							}}
 							type="button"
 						>
-							Reset to Default
+							Reset Changes
 						</button>
 					</div>
 				</Show>
