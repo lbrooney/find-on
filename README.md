@@ -4,7 +4,7 @@ Chrome **and** Firefox extension that searches for discussions of the current UR
 ## Download
   - Google Webstore:
   - Microsoft Edge Webstore:
-  - Firefox Add-Ons:
+  - Firefox Add-Ons: https://addons.mozilla.org/en-US/firefox/addon/find-on-reddit-hacker-news/
 
 ## Features
   - search for the URL of the current tab (automatically or when clicked)
