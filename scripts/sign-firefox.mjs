@@ -81,6 +81,11 @@ if (manifest.version !== version || gecko.update_url) {
 }
 const addonPath = `addons/addon/${encodeURIComponent(gecko.id)}/`;
 const versionPath = `${addonPath}versions/${version}/`;
+const privacy = await readFile("Privacy Policy.md", "utf8");
+await amo(`${addonPath}eula_policy/`, {
+	method: "PATCH",
+	body: JSON.stringify({ privacy_policy: { "en-US": privacy } }),
+});
 let release = await amo(versionPath);
 if (!release) {
 	await submit();
@@ -94,11 +99,6 @@ await writeFile(
 	`${JSON.stringify({ version, status: release.file.status, editUrl: release.edit_url }, undefined, 2)}\n`,
 );
 process.stdout.write(`AMO ${version}: ${release.file.status}\n`);
-const privacy = await readFile("Privacy Policy.md", "utf8");
-await amo(addonPath, {
-	method: "PATCH",
-	body: JSON.stringify({ privacy_policy: { "en-US": privacy } }),
-});
 if (release.file.status !== "public") {
 	throw new Error(
 		`Mozilla has not approved ${version} yet. The submission is preserved; rerun after approval.`,
