@@ -1,29 +1,47 @@
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig, type WxtViteConfig } from "wxt";
+import { defineConfig } from "wxt";
 
-// See https://wxt.dev/api/config.html
 export default defineConfig({
 	imports: false,
+	srcDir: "src",
+	modules: ["@wxt-dev/module-solid"],
 	manifest: {
+		name: "Find On Reddit + Hacker News",
+		minimum_chrome_version: "120",
 		browser_specific_settings: {
 			gecko: {
 				id: "{fa784cb5-9feb-4063-a712-43c1ce2d4ba5}",
+				strict_min_version: "140.0",
+				data_collection_permissions: { required: ["browsingActivity", "websiteContent"] },
 			},
+			gecko_android: { strict_min_version: "142.0" },
 		},
 		host_permissions: [
-			"https://api.reddit.com/*",
-			"https://reddit.com/api/*",
-			"https://www.reddit.com/api/*",
-			"https://hn.algolia.com/api/v1/search/*",
+			"https://old.reddit.com/*",
+			"https://hn.algolia.com/*",
+			"https://arctic-shift.photon-reddit.com/*",
 		],
-		name: "Find On Reddit + Hacker News",
 		optional_permissions: ["tabs"],
 		permissions: ["activeTab", "storage"],
 	},
-	modules: ["@wxt-dev/module-solid"],
-	srcDir: "src",
-	vite: () =>
-		({
-			plugins: [tailwindcss()],
-		}) as WxtViteConfig,
+	vite: () => ({ plugins: [tailwindcss()] }),
+	zip: {
+		includeSources: [
+			"src/**",
+			"scripts/**",
+			"public/**",
+			"package.json",
+			"pnpm-lock.yaml",
+			"tsconfig.json",
+			"wxt.config.ts",
+			"README.md",
+			"changelog.md",
+			"License.md",
+			"Privacy Policy.md",
+			".nvmrc",
+			".oxfmtrc.json",
+			".oxlintrc.json",
+		],
+		dotSources: true,
+	},
 });

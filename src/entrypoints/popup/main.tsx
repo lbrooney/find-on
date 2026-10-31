@@ -2,5 +2,8 @@ import { render } from "solid-js/web";
 
 import App from "./App";
 
-// biome-ignore lint/style/noNonNullAssertion: must exist
-render(() => <App />, document.getElementById("root")!);
+const root = document.getElementById("root");
+if (!root) {
+	throw new Error("Missing application root.");
+}
+render(() => <App />, root);

@@ -1,114 +1,53 @@
-// Shared Hacker News API helper used in popup.js and background.js
+import { HACKER_NEWS_SUBREDDIT } from "@/types/shared";
+import type { Post, SearchResult } from "@/types/shared";
 
-import { DEFAULT_CACHE_OPTIONS } from "@/lib/query";
-import {
-	cache,
-	calcAge,
-	getOptions,
-	searchCache,
-	unixToLocaleDate,
-} from "@/lib/shared";
-import type { HNHit, HNHits } from "@/types/HN";
-import {
-	HACKER_NEWS_SUBREDDIT,
-	type ProcessedHackerNewsPost,
-} from "@/types/shared";
+import { fetchJson, RequestError } from "./http";
+import { isRecord, numberValue, stringValue } from "./parse";
+import { parseHttpUrl, searchKey } from "./url";
 
-export const HN_URL = "https://news.ycombinator.com";
-
-const HN_API_URL = "https://hn.algolia.com/api/v1/search";
-
-interface HNCacheItem {
-	hits: HNHit[];
-	time: number;
-}
-
-function cleanUrl(url: string) {
-	try {
-		const urlObj = new URL(url);
-		const params = urlObj.searchParams;
-		["utm_", "clid", "fbclid", "gclid", "ref", "source", "_ga"].forEach(
-			(param) => {
-				for (const key of params.keys()) {
-					if (key.includes(param)) {
-						params.delete(key);
-					}
-				}
-			},
-		);
-		urlObj.search = params.toString();
-		return urlObj
-			.toString()
-			.replace(/^https?:\/\/(www\.)?/, "")
-			.replace(/\/$/, "");
-	} catch (e) {
-		console.error("HN cleanUrl err:", e);
-		return url;
-	}
-}
-
-export async function fetchHnHits(url: string, useCache = true) {
-	const cleanUrlStr = cleanUrl(url);
-	const cachedData = await searchCache<HNCacheItem>(cleanUrlStr);
-
-	if (useCache && cachedData && (await checkCacheValidity(cachedData))) {
-		return cachedData.hits || [];
-	}
-
+export async function fetchHnHits(
+	query: string,
+	automatic: boolean,
+	retry: boolean,
+): Promise<SearchResult> {
 	const params = new URLSearchParams({
 		analytics: "false",
-		query: cleanUrlStr,
+		query: searchKey(query),
 		restrictSearchableAttributes: "url",
+		tags: "story",
+		hitsPerPage: "100",
 	});
-	const res = await fetch(`${HN_API_URL}?${params}`);
-	if (!res.ok) {
-		throw new Error(
-			`Error fetching HN hits: ${res.statusText} - ${res.statusText}`,
-		);
+	const data = await fetchJson(
+		`https://hn.algolia.com/api/v1/search?${params}`,
+		"hackernews",
+		automatic,
+		retry,
+	);
+	if (!isRecord(data) || !Array.isArray(data.hits)) {
+		throw new RequestError("Hacker News returned an unexpected response.");
 	}
-	const responseData = (await res.json()) as HNHits;
-	const hits = responseData.hits || [];
-
-	await cacheHits(cleanUrlStr, hits);
-
-	return hits;
-}
-
-async function cacheHits(query: string, hits: HNHit[]) {
-	await cache(query, {
-		hits,
-		time: Date.now(),
-	});
-}
-
-async function checkCacheValidity(cacheItem: HNCacheItem) {
-	if (!Object.hasOwn(cacheItem, "hits") || !Object.hasOwn(cacheItem, "time")) {
-		return false;
-	}
-	const diff = Date.now() - cacheItem.time;
-	const { cache } = await getOptions({
-		cache: DEFAULT_CACHE_OPTIONS,
-	});
-	return diff < +cache.period * 60000;
-}
-
-export function convertHitsToPostObjects(
-	hits: HNHit[],
-): ProcessedHackerNewsPost[] {
-	// Convert Algolia hits to objects compatible with Reddit post data structure
-	return hits.map((h) => {
-		const time = h.created_at_i ?? Math.floor(Date.now() / 1000);
-		return {
-			age: calcAge(time),
-			author: h.author ?? "user",
-			created_utc: time,
-			localDate: unixToLocaleDate(time),
-			num_comments: h.num_comments ?? 0,
-			permalink: `/item?id=${h.objectID}`,
-			score: h.points ?? 0,
+	const posts = new Map<string, Post>();
+	for (const hit of data.hits) {
+		if (!isRecord(hit)) {
+			continue;
+		}
+		const id = stringValue(hit.objectID);
+		const url = parseHttpUrl(stringValue(hit.url));
+		if (!/^\d+$/.test(id) || !url) {
+			continue;
+		}
+		posts.set(id, {
+			id,
+			source: "hackernews",
+			url: url.href,
+			permalink: `/item?id=${id}`,
+			title: stringValue(hit.title, "Hacker News discussion"),
+			author: stringValue(hit.author, "[deleted]"),
 			subreddit: HACKER_NEWS_SUBREDDIT,
-			title: h.title ?? "HN Discussion",
-			url: h.url,
-		};
-	});
+			score: numberValue(hit.points),
+			num_comments: numberValue(hit.num_comments),
+			created_utc: numberValue(hit.created_at_i),
+		});
+	}
+	return { posts: [...posts.values()] };
 }

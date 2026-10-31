@@ -1,0 +1,97 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc", "import", "promise", "jsx-a11y"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"perf": "error",
+		"style": "error",
+		"restriction": "error",
+		"nursery": "error",
+		"pedantic": "off"
+	},
+	"env": {
+		"browser": true
+	},
+	"ignorePatterns": [".wxt/**", ".output/**", "node_modules/**"],
+	"rules": {
+		"typescript/consistent-type-imports": "error",
+		"import/exports-last": "off",
+		"import/group-exports": "off",
+		"import/no-named-export": "off",
+		"import/no-default-export": "off",
+		"import/prefer-default-export": "off",
+		"eslint/sort-imports": "off",
+		"eslint/sort-keys": "off",
+		"eslint/no-magic-numbers": "off",
+		"eslint/no-ternary": "off",
+		"eslint/no-undefined": "off",
+		"eslint/no-void": "off",
+		"eslint/max-statements": "off",
+		"eslint/max-params": "off",
+		"eslint/id-length": "off",
+		"eslint/init-declarations": "off",
+		"eslint/no-continue": "off",
+		"eslint/no-plusplus": "off",
+		"eslint/complexity": "off",
+		"typescript/explicit-function-return-type": "off",
+		"typescript/explicit-module-boundary-types": "off",
+		"typescript/explicit-member-accessibility": "off",
+		"typescript/parameter-properties": "off",
+		"oxc/no-async-await": "off",
+		"oxc/no-optional-chaining": "off",
+		"oxc/no-rest-spread-properties": "off",
+		"promise/prefer-await-to-then": "off",
+		"promise/prefer-await-to-callbacks": "off",
+		"promise/avoid-new": "off",
+		"eslint/one-var": ["error", "never"],
+		"eslint/func-style": [
+			"error",
+			"declaration",
+			{
+				"allowArrowFunctions": true
+			}
+		],
+		"unicorn/filename-case": [
+			"error",
+			{
+				"cases": {
+					"kebabCase": true,
+					"pascalCase": true
+				}
+			}
+		],
+		"import/no-unassigned-import": [
+			"error",
+			{
+				"allow": ["**/*.css"]
+			}
+		],
+		"eslint/no-duplicate-imports": [
+			"error",
+			{
+				"allowSeparateTypeImports": true
+			}
+		],
+		"promise/always-return": [
+			"error",
+			{
+				"ignoreLastCallback": true
+			}
+		]
+	},
+	"options": {
+		"typeAware": true
+	},
+	"overrides": [
+		{
+			"files": ["scripts/**/*.mjs"],
+			"env": {
+				"node": true
+			},
+			"rules": {
+				"import/no-nodejs-modules": "off"
+			}
+		}
+	]
+}

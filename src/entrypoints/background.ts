@@ -1,212 +1,191 @@
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
-import { fetchHnHits } from "@/lib/hn";
-import { DEFAULT_BACKGROUND_OPTIONS } from "@/lib/query";
-import { findOnReddit } from "@/lib/reddit";
-import {
-	BADGE_COLORS,
-	getOptions,
-	numToBadgeText,
-	removeBadge,
-	setBadge,
-	updateOptions,
-} from "@/lib/shared";
-import { processUrl, removeQueryString } from "@/lib/url";
-import type { HNHit } from "@/types/HN";
-import type { BackgroundOptions } from "@/types/options";
-import type { RedditListing } from "@/types/Reddit";
+
+import { getAllOptions } from "@/lib/options";
+import { isSearchRequest, search } from "@/lib/search";
+import { BADGE_COLORS, numToBadgeText, removeBadge, setBadge } from "@/lib/shared";
+import { matchesFilter, parseHttpUrl, processUrl } from "@/lib/url";
+import type { AllOptions } from "@/types/options";
+import type { SearchRequest, SearchResponse, SearchResult, Source } from "@/types/shared";
 
 export default defineBackground({
-	main: () => {
-		let options: BackgroundOptions;
+	persistent: false,
+	main() {
+		const searches = new Map<number, symbol>();
+		let settings: Promise<AllOptions> | undefined;
+		const getSettings = async () =>
+			(settings ??= getAllOptions().catch((error: unknown) => {
+				settings = undefined;
+				throw error;
+			}));
 
-		async function updateListenerFlags() {
-			options = await getOptions(DEFAULT_BACKGROUND_OPTIONS);
-			if (!(await browser.permissions.contains({ permissions: ["tabs"] }))) {
-				options.autorun.activated = false;
-				options.autorun.updated = false;
-				await updateOptions(options);
+		browser.storage.onChanged.addListener((_changes, area) => {
+			if (area === "sync") {
+				settings = undefined;
+				searches.clear();
 			}
-		}
+		});
+		browser.permissions.onRemoved.addListener(() => searches.clear());
+		browser.tabs.onRemoved.addListener((tabId) => searches.delete(tabId));
 
-		const BG_RETRY_INTERVAL = 5e3;
-		const MAX_RETRIES = 5;
+		// Register synchronously so a suspended service worker can answer the popup immediately.
+		browser.runtime.onMessage.addListener((message: unknown, sender, respond) => {
+			if (sender.id !== browser.runtime.id || !isSearchRequest(message)) {
+				return false;
+			}
+			void getSettings()
+				.then(async (options) => search(message, options))
+				.then((result) => respond({ ok: true, result } satisfies SearchResponse))
+				.catch((error: unknown) =>
+					respond({
+						ok: false,
+						error: error instanceof Error ? error.message : "Search failed. Try again.",
+					} satisfies SearchResponse),
+				);
+			return true;
+		});
 
-		async function setErrorBadge(tabId: number) {
-			return setBadge(tabId, "X", BADGE_COLORS.error);
-		}
-
-		async function handleError(e: Error, tabId: number) {
-			console.error(e);
-			return setErrorBadge(tabId);
-		}
-
-		async function searchExact(tabId: number, url: string) {
-			for (let i = 0; i < MAX_RETRIES; i++) {
-				try {
-					return (await findOnReddit(url, true, true)).posts;
-				} catch (e) {
-					if (options.autorun.retryError) {
-						await new Promise((resolve) =>
-							setTimeout(resolve, BG_RETRY_INTERVAL),
-						);
-					} else {
-						void handleError(e as Error, tabId);
-						return [];
+		async function autoSearch(tabId: number, input: string, token: symbol, options: AllOptions) {
+			const url = parseHttpUrl(input);
+			if (
+				!url ||
+				options.filterlist.type !==
+					options.filterlist.filters.some((filter) => matchesFilter(url, filter))
+			) {
+				return;
+			}
+			const makeRequest = (source: Source, exact = options.search.exactMatch): SearchRequest => ({
+				type: "search",
+				source,
+				url: url.href,
+				exact,
+				refresh: false,
+				ignoreQs: options.search.ignoreQs,
+				ytHandling: options.search.ytHandling,
+			});
+			const redditSearch = async (): Promise<SearchResult> => {
+				if (!options.search.sources.reddit) {
+					return { posts: [] };
+				}
+				const exact =
+					options.search.exactMatch &&
+					!processUrl(url.href, { handleYtSpecial: options.search.ytHandling }).isYt;
+				const first = await search(makeRequest("reddit", exact), options, true);
+				if (first.warning) {
+					return first;
+				}
+				if (
+					options.autorun.alwaysBothExactAndNonExact &&
+					!processUrl(url.href, { handleYtSpecial: options.search.ytHandling }).isYt
+				) {
+					try {
+						const other = await search(makeRequest("reddit", !exact), options, true);
+						return {
+							posts: [
+								...new Map(
+									[...first.posts, ...other.posts].map((post) => [post.id, post]),
+								).values(),
+							],
+							warning: other.warning,
+							via: first.via ?? other.via,
+						};
+					} catch (error) {
+						return {
+							...first,
+							warning:
+								error instanceof Error ? error.message : "Some Reddit threads could not be loaded.",
+						};
 					}
 				}
+				return exact && options.autorun.retryExact && !first.posts.length
+					? search(makeRequest("reddit", false), options, true)
+					: first;
+			};
+			const results = await Promise.allSettled([
+				redditSearch(),
+				options.search.sources.hackernews
+					? search(makeRequest("hackernews"), options, true)
+					: Promise.resolve<SearchResult>({ posts: [] }),
+			]);
+			if (searches.get(tabId) !== token) {
+				return;
 			}
-			return [];
-		}
-
-		async function searchNonExact(tabId: number, url: string) {
-			for (let i = 0; i < MAX_RETRIES; i++) {
-				try {
-					return (await findOnReddit(url, true, false)).posts;
-				} catch (e) {
-					if (options.autorun.retryError) {
-						await new Promise((resolve) =>
-							setTimeout(resolve, BG_RETRY_INTERVAL),
-						);
-					} else {
-						void handleError(e as Error, tabId);
-						return [];
-					}
+			const tab = await browser.tabs.get(tabId);
+			if (searches.get(tabId) !== token || parseHttpUrl(tab.url ?? "")?.href !== url.href) {
+				return;
+			}
+			const posts = results.flatMap((result) =>
+				result.status === "fulfilled" ? result.value.posts : [],
+			);
+			const errors = results.flatMap((result) => {
+				if (result.status === "rejected") {
+					return [result.reason instanceof Error ? result.reason.message : "Search failed."];
 				}
-			}
-			return [];
-		}
-
-		async function fetchReddit(
-			urlToSearch: string,
-			{
-				isYt,
-				exactMatch,
+				return result.value.warning ? [result.value.warning] : [];
+			});
+			const count =
+				options.autorun.badgeContent === "num_comments"
+					? posts.reduce((total, post) => total + post.num_comments, 0)
+					: posts.length;
+			const archived = results.some(
+				(result) => result.status === "fulfilled" && result.value.via === "arctic-shift",
+			);
+			const title = errors.length
+				? errors.join("\n")
+				: `${count} ${options.autorun.badgeContent === "num_comments" ? "comments" : "discussions"} found`;
+			await setBadge(
 				tabId,
-			}: { isYt: boolean; exactMatch: boolean; tabId: number },
-		) {
-			if (exactMatch) {
-				let posts = await searchExact(tabId, urlToSearch);
-				if (options.autorun.retryExact && posts.length === 0) {
-					posts = await searchNonExact(tabId, urlToSearch);
-				} else if (options.autorun.alwaysBothExactAndNonExact) {
-					// don't return, just save to cache
-					void searchNonExact(tabId, urlToSearch);
-				}
-				return posts;
-			} else {
-				const posts = await searchNonExact(tabId, urlToSearch);
-				if (options.autorun.alwaysBothExactAndNonExact && !isYt) {
-					// don't return, just save to cache
-					void searchExact(tabId, urlToSearch);
-				}
-				return posts;
-			}
-		}
-
-		async function fetchHN(url: string, tabId: number) {
-			for (let i = 0; i < MAX_RETRIES; i++) {
-				try {
-					return await fetchHnHits(url, true);
-				} catch (e) {
-					if (options.autorun.retryError) {
-						await new Promise((resolve) =>
-							setTimeout(resolve, BG_RETRY_INTERVAL),
-						);
-					} else {
-						void handleError(e as Error, tabId);
-						return [];
-					}
-				}
-			}
-			return [];
-		}
-
-		function isFiltered(url: string) {
-			return options.filterlist.filters.some((s) => url.search(s) > -1);
-		}
-
-		function isAllowed(url: string) {
-			url = url.toLowerCase();
-			// if whitelist and filtered allowed
-			// if blacklist and not filtered allow
-			return (
-				url.length > 0 &&
-				/^https?:\/\//i.test(url) &&
-				options.filterlist.type === isFiltered(url)
+				errors.length && !posts.length ? "!" : numToBadgeText(count),
+				errors.length ? BADGE_COLORS.error : BADGE_COLORS.success,
+				archived ? `${title}\nReddit results provided by Arctic Shift's archive.` : title,
 			);
 		}
 
-		async function setResultsBadge(
-			tabId: number,
-			redditPosts: RedditListing[] = [],
-			hnPosts: HNHit[] = [],
-		) {
-			const color = BADGE_COLORS.success;
-			const totalPosts = redditPosts.length + hnPosts.length;
-			if (totalPosts === 0) {
-				return setBadge(tabId, "0", color);
-			} else if (options.autorun.badgeContent === "num_comments") {
-				const numCommentsReddit = redditPosts.reduce(
-					(a, p) => a + p.data.num_comments,
-					0,
-				);
-				const numCommentsHn = hnPosts.reduce((a, p) => a + p.num_comments, 0);
-				const totalComments = numCommentsReddit + numCommentsHn;
-				return setBadge(tabId, `${numToBadgeText(totalComments)}`, color);
-			} else {
-				return setBadge(tabId, `${numToBadgeText(totalPosts)}`, color);
+		async function run(tabId: number, trigger: "updated" | "activated", url?: string) {
+			const token = Symbol();
+			if (trigger === "updated") {
+				searches.set(tabId, token);
+			}
+			try {
+				if (trigger === "updated") {
+					await removeBadge(tabId);
+				}
+				const [options, permitted] = await Promise.all([
+					getSettings(),
+					browser.permissions.contains({ permissions: ["tabs"] }),
+				]);
+				if (!permitted || !options.autorun[trigger]) {
+					return;
+				}
+				if (trigger === "activated") {
+					// An activation must not cancel an in-flight navigation lookup.
+					if (searches.has(tabId)) {
+						return;
+					}
+					searches.set(tabId, token);
+				} else if (searches.get(tabId) !== token) {
+					return;
+				}
+				const tab = url ? undefined : await browser.tabs.get(tabId);
+				const input = url ?? tab?.url;
+				if (input && searches.get(tabId) === token) {
+					await autoSearch(tabId, input, token, options);
+				}
+			} catch {
+				// Navigation or closing a tab can invalidate an automatic lookup.
+			} finally {
+				if (searches.get(tabId) === token) {
+					searches.delete(tabId);
+				}
 			}
 		}
-
-		async function autoSearch(tabId: number, url: string) {
-			if (!isAllowed(removeQueryString(url))) {
-				return;
+		browser.tabs.onUpdated.addListener((tabId, change, tab) => {
+			if (change.url || change.status === "loading") {
+				void run(tabId, "updated", change.url ?? tab.url);
 			}
-
-			const { urlToSearch, isYt } = processUrl(url, {
-				handleYtSpecial: options.search.ytHandling,
-				ignoreQueryString: options.search.ignoreQs,
-			});
-			const exactMatch = options.search.exactMatch && !isYt;
-			const [redditPosts, hnPosts] = await Promise.allSettled([
-				options.search.sources.reddit
-					? fetchReddit(urlToSearch, { exactMatch, isYt, tabId })
-					: [],
-				options.search.sources.hackernews ? fetchHN(url, tabId) : [],
-			]);
-			if (
-				redditPosts.status === "fulfilled" &&
-				hnPosts.status === "fulfilled"
-			) {
-				return setResultsBadge(tabId, redditPosts.value, hnPosts.value);
-			} else if (redditPosts.status === "fulfilled") {
-				return setResultsBadge(tabId, redditPosts.value, []);
-			} else if (hnPosts.status === "fulfilled") {
-				return setResultsBadge(tabId, [], hnPosts.value);
-			}
-		}
-
-		browser.tabs.onUpdated.addListener(async (tabId, { status }, tab) => {
-			await updateListenerFlags();
-			const tabUrl = tab.url;
-			// check on status which runs on url change and page reload
-			if (!options.autorun.updated || !tabUrl || status !== "loading") {
-				return;
-			}
-			await removeBadge(tabId);
-			return autoSearch(tabId, tabUrl);
 		});
-
-		browser.tabs.onActivated.addListener(async ({ tabId }) => {
-			await updateListenerFlags();
-			const tabUrl = (await browser.tabs.get(tabId))?.url;
-			if (!options.autorun.activated || !tabUrl) {
-				return;
-			}
-			return autoSearch(tabId, tabUrl);
+		browser.tabs.onActivated.addListener(({ tabId }) => {
+			void run(tabId, "activated");
 		});
 	},
-	persistent: false,
-	type: "module",
 });

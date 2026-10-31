@@ -2,74 +2,56 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish or resume
+        required: true
+        type: string
   push:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
-          cache: "pnpm"
-
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm install
-
-      - name: Get Version and Name from package.json
-        id: get_version
+        run: pnpm install --frozen-lockfile
+      - name: Validate release version
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          VERSION=$(jq -r .version package.json)
-          EXTENSION_NAME=$(jq -r .name package.json)
-          echo "Extracted version: $VERSION"
-          echo "Extracted extension name: $EXTENSION_NAME"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "EXTENSION_NAME=$EXTENSION_NAME" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Zip extensions
-        run: |
-          pnpm zip
-          pnpm zip:firefox
-
-      - name: Create Release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: |
-            .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-chrome.zip
-            .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-firefox.zip
-            .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-sources.zip
-          allowUpdates: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: v${{ steps.get_version.outputs.VERSION }}
-          tag: v${{ steps.get_version.outputs.VERSION }}
-          body: |
-            ## Release Notes for v${{ steps.get_version.outputs.VERSION }}
-
-            This release includes the following artifacts:
-
-            *   Chrome Extension
-            *   Firefox Extension
-            *   Firefox Sources (for AMO submission)
-
-            Please see the [commit history](https://github.com/${{ github.repository }}/commits/v${{ steps.get_version.outputs.VERSION }}) for more details.
-
-      #- name: Submit to stores
-      #  run: |
-      #    pnpm wxt submit \
-      #      --chrome-zip .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-chrome.zip \
-      #      --firefox-zip .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-firefox.zip --firefox-sources-zip .output/${{ steps.get_version.outputs.EXTENSION_NAME }}-${{ steps.get_version.outputs.VERSION }}-sources.zip
-      #  env:
-      #    CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-      #    CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-      #    CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-      #    CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
-      #    FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
-      #    FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
-      #    FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+          version=$(node -p "require('./package.json').version")
+          if [[ "$RELEASE_TAG" != "v$version" ]]; then
+            echo "Tag does not match package.json version" >&2
+            exit 1
+          fi
+      - name: Check formatting, lint, types and builds
+        run: pnpm check
+      - name: Package extensions and source; prepare release metadata
+        run: pnpm release:prepare
+      - name: Submit AMO update and download the signed Firefox package
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: pnpm release:sign
+      - name: Publish GitHub release with the identical signed Firefox version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm release:publish

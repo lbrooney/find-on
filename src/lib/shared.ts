@@ -1,121 +1,76 @@
-import { type Browser, browser } from "wxt/browser";
-import type { AllOptions } from "@/types/options";
-import { DEFAULT_OPTIONS } from "./query";
+import { browser } from "wxt/browser";
 
-export const BADGE_COLORS = {
-	error: "#DD1616",
-	success: "#555555",
-};
+import type { Post, DisplayPost } from "@/types/shared";
 
-export async function getCurrentTabUrl() {
-	const tab = await getCurrentTab();
-	return tab.url;
-}
-
-export async function getCurrentTabIndex() {
-	const tab = await getCurrentTab();
-	return tab.index;
-}
+export const BADGE_COLORS = { error: "#DD1616", success: "#555555" };
 
 export async function getCurrentTab() {
-	const tabs = await browser.tabs.query({
-		active: true,
-		currentWindow: true,
-	});
-	return tabs[0];
-}
-
-export async function navigateTo(url: string) {
-	const tab = await getCurrentTab();
-	if (tab.id) {
-		browser.tabs.update(tab.id, { url });
+	const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+	if (!tab) {
+		throw new Error("No active browser tab is available.");
 	}
+	return tab;
 }
 
-export async function searchCache<T>(query: string) {
-	return (await browser.storage.session.get<{ [query]?: T }>(query))[query];
-}
-
-export async function clearCache() {
-	await browser.storage.session.clear();
-}
-
-export async function cache<T>(key: string, data: T) {
-	await browser.storage.session.set<{ [key]: T }>({ [key]: data });
-}
-
-export async function updateOptions<T extends Partial<AllOptions>>(data: T) {
-	await browser.storage.sync.set<T>(data);
-}
-
-export async function getAllOptions() {
-	return getOptions(DEFAULT_OPTIONS);
-}
-
-export async function getOptions<T extends Partial<AllOptions>>(query: T) {
-	return browser.storage.sync.get<T>(query);
-}
-
-export const pluralize = (str: string, n: number) =>
-	`${str}${n !== 1 ? "s" : ""}`;
-
+export const pluralize = (word: string, count: number) => `${word}${count === 1 ? "" : "s"}`;
 const timeUnits = [
-	{ decis: 0, factor: 1 / 1e3, name: "seconds" },
-	{ decis: 0, factor: 1 / (1e3 * 60), name: "minutes" },
-	{ decis: 0, factor: 1 / (1e3 * 60 * 60), name: "hours" },
-	{ decis: 0, factor: 1 / (1e3 * 60 * 60 * 24), name: "days" },
-	{ decis: 0, factor: 1 / (1e3 * 60 * 60 * 24 * 30), name: "months" },
-	{ decis: 1, factor: 1 / (1e3 * 60 * 60 * 24 * 30 * 12), name: "years" },
+	{ seconds: 31_536_000, name: "year" },
+	{ seconds: 2_592_000, name: "month" },
+	{ seconds: 86_400, name: "day" },
+	{ seconds: 3600, name: "hour" },
+	{ seconds: 60, name: "minute" },
+	{ seconds: 1, name: "second" },
 ];
-
-export function calcAge(timestampSeconds: number): string {
-	const diffMillis = Date.now() - timestampSeconds * 1e3;
-	const [n, unit] = timeUnits
-		.map((t) => [+(diffMillis * t.factor).toFixed(t.decis), t.name])
-		.reverse()
-		.find(([val]) => (val as number) >= 1) || [0, "seconds"]; // Fallback for very small diffs
-
-	const displayUnit = n === 1 ? (unit as string).slice(0, -1) : unit;
-	return `${n} ${displayUnit}`;
-}
-
-export const unixToLocaleDate = (time: number) =>
-	new Date(time * 1000).toLocaleString(undefined, {
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-		month: "short",
-		year: "numeric",
-	});
-
-export function numToBadgeText(n: number) {
-	if (n < 1_000) {
-		return `${n}`;
-	} else if (n < 1_000_000) {
-		return `${Math.trunc(n / 1_000)}K+`;
-	} else if (n < 1_000_000_000) {
-		return `${Math.trunc(n / 1_000_000)}M+`;
+export function calcAge(timestamp: number): string {
+	const age = Math.max(0, Date.now() / 1000 - timestamp);
+	for (const unit of timeUnits) {
+		if (age >= unit.seconds) {
+			const count = Math.floor(age / unit.seconds);
+			return `${count} ${pluralize(unit.name, count)}`;
+		}
 	}
-	return "inf";
+	return "0 seconds";
 }
-
-export async function removeBadge(tabId: number) {
-	return setBadge(tabId, "", BADGE_COLORS.success);
+const dateFormat = new Intl.DateTimeFormat(undefined, {
+	day: "numeric",
+	hour: "numeric",
+	minute: "2-digit",
+	month: "short",
+	year: "numeric",
+});
+export function displayPosts(posts: Post[]): DisplayPost[] {
+	return posts.map((post) => ({
+		...post,
+		age: calcAge(post.created_utc),
+		localDate: dateFormat.format(post.created_utc * 1000),
+	}));
 }
-
-export async function setBadge(tabId: number, text: string, color: string) {
-	const badge: Browser.action.BadgeTextDetails = { tabId: tabId, text: text };
-	const bgCol: Browser.action.BadgeColorDetails = {
-		color: color,
-		tabId: tabId,
-	};
-	// could just make the extension mv3 on firefox as well, but DX/hot reload is broken
+export function numToBadgeText(count: number): string {
+	if (count < 1000) {
+		return String(count);
+	}
+	if (count < 1_000_000) {
+		return `${Math.trunc(count / 1000)}K+`;
+	}
+	return `${Math.trunc(count / 1_000_000)}M+`;
+}
+export async function setBadge(
+	tabId: number,
+	text: string,
+	color = BADGE_COLORS.success,
+	title = "Find on Reddit & Hacker News",
+): Promise<void> {
 	try {
-		await (browser.action ?? browser.browserAction).setBadgeText(badge);
-		await (browser.action ?? browser.browserAction).setBadgeBackgroundColor(
-			bgCol,
-		);
-	} catch (args) {
-		console.error(args);
+		const action = import.meta.env.MANIFEST_VERSION === 2 ? browser.browserAction : browser.action;
+		await Promise.all([
+			action.setBadgeText({ tabId, text }),
+			action.setBadgeBackgroundColor({ tabId, color }),
+			action.setTitle({ tabId, title }),
+		]);
+	} catch {
+		// Tabs can close while a lookup is in flight.
 	}
+}
+export async function removeBadge(tabId: number): Promise<void> {
+	await setBadge(tabId, "");
 }

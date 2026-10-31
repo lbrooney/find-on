@@ -1,0 +1,9 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"useTabs": true,
+	"ignorePatterns": [".wxt/**", ".output/**", "node_modules/**", "pnpm-lock.yaml"],
+	"sortImports": {},
+	"sortTailwindcss": {
+		"stylesheet": "./src/assets/index.css"
+	}
+}

@@ -1,5 +1,4 @@
 import "@/assets/index.css";
-
 import {
 	batch,
 	createEffect,
@@ -7,484 +6,418 @@ import {
 	createResource,
 	createSignal,
 	For,
-	Match,
+	onCleanup,
 	onMount,
 	Show,
-	Switch,
 } from "solid-js";
 import { createStore } from "solid-js/store";
 import { browser } from "wxt/browser";
-import RedditIcon from "@/components/RedditIcon";
+
 import Settings from "@/components/SettingsIcon";
-import YCIcon from "@/components/YCombinator";
-import { convertHitsToPostObjects, fetchHnHits } from "@/lib/hn";
-import { DEFAULT_POPUP_OPTIONS, fieldMappings } from "@/lib/query";
-import { convertRedditToPostObjects, findOnReddit } from "@/lib/reddit";
+import { requestSearch } from "@/lib/messages";
+import { DEFAULT_POPUP_OPTIONS, getPopupOptions, orderBy } from "@/lib/options";
 import {
 	BADGE_COLORS,
+	displayPosts,
 	getCurrentTab,
-	getCurrentTabIndex,
-	getOptions,
-	navigateTo,
 	numToBadgeText,
 	pluralize,
-	removeBadge,
 	setBadge,
 } from "@/lib/shared";
-import { processUrl } from "@/lib/url";
-import type { OrderBy, PopupOptions } from "@/types/options";
-import {
-	HACKER_NEWS_SUBREDDIT,
-	type ProcessedHackerNewsPost,
-	type ProcessedRedditPost,
-} from "@/types/shared";
-import HackerNewsResult from "./HackerNewsResult";
-import RedditResult from "./RedditResult";
+import { parseHttpUrl, processUrl } from "@/lib/url";
+import type { SearchResult, Source } from "@/types/shared";
 
-const optionsDisabled: PopupOptions = {
-	...DEFAULT_POPUP_OPTIONS,
-	search: {
-		...DEFAULT_POPUP_OPTIONS.search,
-		sources: {
-			hackernews: false,
-			reddit: false,
-		},
-	},
-};
+import Result from "./Result";
+
+interface SourceView extends SearchResult {
+	error?: string;
+}
+const EMPTY: SourceView = { posts: [] };
+const control =
+	"rounded-md border border-neutral-400 bg-neutral-100 px-2 py-1 dark:border-neutral-600 dark:bg-neutral-700";
 
 export default function Popup() {
-	const [options, setOptions] = createStore<{ value: PopupOptions }>({
-		value: optionsDisabled,
-	});
+	const [options, setOptions] = createStore(structuredClone(DEFAULT_POPUP_OPTIONS));
+	const [ready, setReady] = createSignal(false);
+	const [input, setInput] = createSignal("");
+	const [query, setQuery] = createSignal("");
+	const [revision, setRevision] = createSignal(0);
+	const [message, setMessage] = createSignal("");
+	const [tabId, setTabId] = createSignal<number>();
+	const [tabUrl, setTabUrl] = createSignal("");
+	const video = createMemo(() => processUrl(query(), { handleYtSpecial: true }));
 
-	const [urlInput, setUrlInput] = createSignal<string>("");
-	const [tabId, setTabId] = createSignal<number | undefined>(undefined);
-
-	const [searchOptionsVisibility, setSearchOptionsVisibility] =
-		createSignal(true);
-	const [ytChoiceVisible, setYtChoiceVisible] = createSignal(false);
-	const [ytVidIdDisplay, setYtVidIdDisplay] = createSignal("");
-
-	const [redditPosts, { refetch: refetchReddit }] = createResource<
-		ProcessedRedditPost[],
-		boolean
-	>(
-		() => options.value.search.sources.reddit,
-		async (_, { value, refetching }) => {
-			if (!refetching && value?.length !== 0) {
-				return value as ProcessedRedditPost[];
-			}
-			const url = urlInput();
-			const { urlToSearch, isYt } = processUrl(url, {
-				handleYtSpecial: options.value.search.ytHandling,
-				ignoreQueryString: options.value.search.ignoreQs,
-			});
-
-			const reddit = await findOnReddit(
-				urlToSearch,
-				!refetching,
-				options.value.search.exactMatch && !isYt,
-			);
-			return convertRedditToPostObjects(reddit.posts);
-		},
-		{
-			initialValue: [],
-		},
+	function createSource(source: Source) {
+		let previousRevision = 0;
+		const [result] = createResource(
+			() =>
+				ready() &&
+				options.search.sources[source] &&
+				parseHttpUrl(query()) && {
+					url: query(),
+					exact: source === "reddit" && options.search.exactMatch,
+					ignoreQs: options.search.ignoreQs,
+					ytHandling: options.search.ytHandling,
+					revision: revision(),
+				},
+			async (params): Promise<SourceView> => {
+				const refresh = params.revision !== previousRevision;
+				previousRevision = params.revision;
+				try {
+					return await requestSearch({
+						type: "search",
+						source,
+						url: params.url,
+						exact: params.exact,
+						ignoreQs: params.ignoreQs,
+						ytHandling: params.ytHandling,
+						refresh,
+					});
+				} catch (error) {
+					return {
+						posts: [],
+						error: error instanceof Error ? error.message : "Search failed. Try again.",
+					};
+				}
+			},
+			{ initialValue: EMPTY },
+		);
+		return result;
+	}
+	const reddit = createSource("reddit");
+	const hackernews = createSource("hackernews");
+	const loading = () =>
+		(options.search.sources.reddit && reddit.loading) ||
+		(options.search.sources.hackernews && hackernews.loading);
+	const problems = createMemo(() =>
+		[
+			...(options.search.sources.reddit && !reddit.loading
+				? [reddit().error, reddit().warning]
+				: []),
+			...(options.search.sources.hackernews && !hackernews.loading
+				? [hackernews().error, hackernews().warning]
+				: []),
+		].filter((value): value is string => Boolean(value)),
 	);
-
-	const [hnPosts, { refetch: refetchHN }] = createResource<
-		ProcessedHackerNewsPost[],
-		boolean
-	>(
-		() => options.value.search.sources.hackernews,
-		async (_, { value, refetching }) => {
-			if (!refetching && value?.length !== 0) {
-				return value as ProcessedHackerNewsPost[];
+	const results = createMemo(() => {
+		const posts = [
+			...(options.search.sources.reddit && !reddit.loading ? reddit().posts : []),
+			...(options.search.sources.hackernews && !hackernews.loading ? hackernews().posts : []),
+		];
+		const direction = options.popup.results.desc ? -1 : 1;
+		const order = options.popup.results.orderBy;
+		posts.sort((a, b) => {
+			if (order === "subreddit") {
+				return a.subreddit.localeCompare(b.subreddit) * direction;
 			}
-			const url = urlInput();
-
-			const hn = await fetchHnHits(url, !refetching);
-			return convertHitsToPostObjects(hn);
-		},
-		{
-			initialValue: [],
-		},
-	);
-
-	const source = createMemo(() => {
-		if (
-			options.value.search.sources.reddit &&
-			options.value.search.sources.hackernews
-		) {
-			return "all";
-		} else if (options.value.search.sources.hackernews) {
-			return "hackernews";
-		} else if (options.value.search.sources.reddit) {
-			return "reddit";
-		} else {
-			return "";
-		}
-	});
-
-	const sortedResults = createMemo(() => {
-		const posts = ([] as ProcessedRedditPost[])
-			.concat(options.value.search.sources.reddit ? redditPosts.latest : [])
-			.concat(options.value.search.sources.hackernews ? hnPosts.latest : []);
-		if (options.value.popup.results.orderBy === "subreddit") {
-			// Sort alphabetically for subreddit
-			return posts.sort(
-				(a, b) =>
-					a.subreddit.localeCompare(b.subreddit) *
-					(options.value.popup.results.desc ? -1 : 1),
-			);
-		}
-
-		const field = fieldMappings[options.value.popup.results.orderBy];
-		const comparator = (a: ProcessedRedditPost, b: ProcessedRedditPost) => {
-			let valA: number | string = a[field];
-			let valB: number | string = b[field];
-
-			if (field === "created_utc") {
-				valA = Number(valA);
-				valB = Number(valB);
-			}
-
-			// Handle potential undefined or null values by treating them as 0 for numeric fields
-			if (typeof valA === "number" && typeof valB === "number") {
-				return (
-					((valA || 0) - (valB || 0)) *
-					(options.value.popup.results.desc ? -1 : 1)
-				);
-			}
-			if (typeof valA === "string" && typeof valB === "string") {
-				return (
-					valA.localeCompare(valB) * (options.value.popup.results.desc ? -1 : 1)
-				);
-			}
-			return 0; // Fallback if types are mixed or unexpected
-		};
-		return posts.sort(comparator);
-	});
-
-	createEffect(() => {
-		const tab = tabId();
-		if (tab) {
-			const posts = sortedResults();
-
-			if (options.value.autorun.badgeContent === "num_comments") {
-				void setBadge(
-					tab,
-					numToBadgeText(posts.reduce((a, p) => a + p.num_comments, 0)),
-					BADGE_COLORS.success,
-				);
-			} else {
-				void setBadge(tab, numToBadgeText(posts.length), BADGE_COLORS.success);
-			}
-		}
-	});
-
-	onMount(async () => {
-		try {
-			const tab = await getCurrentTab();
-			setUrlInput(tab.url ?? "");
-			setTabId(tab.id);
-			setOptions("value", await getOptions(DEFAULT_POPUP_OPTIONS));
-		} catch (e) {
-			console.error("Initialization error:", e);
-		}
-	});
-
-	createEffect(() => {
-		const { urlToSearch: videoId, isYt } = processUrl(urlInput(), {
-			handleYtSpecial: true,
+			const fields = { age: "created_utc", comments: "num_comments", score: "score" } as const;
+			const field = fields[order];
+			return (a[field] - b[field]) * direction;
 		});
-		if (isYt) {
-			setYtVidIdDisplay(videoId ?? "");
-			setYtChoiceVisible(true);
-			if (options.value.search.ytHandling) {
-				setSearchOptionsVisibility(false);
-			} else {
-				setSearchOptionsVisibility(true);
-			}
-		} else {
-			setYtChoiceVisible(false);
-			setSearchOptionsVisibility(true);
-		}
+		return displayPosts(posts);
 	});
-
-	const handleLinkClick = async (e: MouseEvent, href: string) => {
-		e.preventDefault();
-		e.stopPropagation();
-
-		const options = await getOptions(DEFAULT_POPUP_OPTIONS); // Fetch current options
-
-		if (e.metaKey || e.shiftKey || e.altKey) {
-			// Cmd/Shift/Alt + click: let browser handle it (new tab usually)
-			window.open(href, "_blank");
-			return;
-		} else if (e.ctrlKey) {
-			// Ctrl + click: Open in new background tab, keep popup open
-			browser.tabs.create({ active: false, url: href });
-			// Prevent default behavior to keep popup open
-			return;
-		} else if (options.popup.newTab) {
-			if (options.popup.newtabInBg && options.popup.newtabInBgAdjacent) {
-				const idx = await getCurrentTabIndex();
-				browser.tabs.create({
-					active: false,
-					index: idx + 1,
-					url: href,
-				});
-			} else {
-				browser.tabs.create({
-					active: !options.popup.newtabInBg,
-					url: href,
-				});
-			}
-		} else {
-			navigateTo(href); // Navigate in current tab, closes popup
+	const source = () => {
+		if (!options.search.sources.reddit) {
+			return "hackernews";
 		}
+		return options.search.sources.hackernews ? "all" : "reddit";
 	};
 
+	onMount(() => {
+		void Promise.all([getCurrentTab(), getPopupOptions()])
+			.then(([tab, saved]) => {
+				batch(() => {
+					setOptions(saved);
+					setInput(tab.url ?? "");
+					setQuery(tab.url ?? "");
+					setTabUrl(tab.url ?? "");
+					setTabId(tab.id);
+					setReady(true);
+					if (!parseHttpUrl(tab.url ?? "")) {
+						setMessage("Enter an HTTP or HTTPS page URL to find discussions.");
+					}
+				});
+			})
+			.catch((error: unknown) =>
+				setMessage(error instanceof Error ? error.message : "Could not load the current tab."),
+			);
+	});
+
+	let badgeRevision = 0;
+	onCleanup(() => {
+		badgeRevision += 1;
+	});
+	createEffect(() => {
+		const currentRevision = ++badgeRevision;
+		const id = tabId();
+		if (
+			!ready() ||
+			loading() ||
+			id === undefined ||
+			!parseHttpUrl(query()) ||
+			parseHttpUrl(query())?.href !== parseHttpUrl(tabUrl())?.href
+		) {
+			return;
+		}
+		const posts = results();
+		const errors = problems();
+		const count =
+			options.autorun.badgeContent === "num_comments"
+				? posts.reduce((sum, post) => sum + post.num_comments, 0)
+				: posts.length;
+		const expectedUrl = parseHttpUrl(query())?.href;
+		const archived = options.search.sources.reddit && reddit().via === "arctic-shift";
+		const title = errors.length
+			? errors.join("\n")
+			: `${count} ${options.autorun.badgeContent === "num_comments" ? "comments" : "discussions"} found`;
+		void browser.tabs
+			.get(id)
+			.then(async (tab) => {
+				if (
+					badgeRevision !== currentRevision ||
+					parseHttpUrl(tab.url ?? "")?.href !== expectedUrl
+				) {
+					return;
+				}
+				await setBadge(
+					id,
+					errors.length && !posts.length ? "!" : numToBadgeText(count),
+					errors.length ? BADGE_COLORS.error : BADGE_COLORS.success,
+					archived ? `${title}\nReddit results provided by Arctic Shift's archive.` : title,
+				);
+			})
+			.catch(() => undefined);
+	});
+
+	function submit(event: SubmitEvent) {
+		event.preventDefault();
+		const url = parseHttpUrl(input().trim());
+		if (!url) {
+			setMessage("Enter a valid HTTP or HTTPS URL without a username or password.");
+			return;
+		}
+		batch(() => {
+			setMessage("");
+			setQuery(url.href);
+			setReady(true);
+			setRevision((value) => value + 1);
+		});
+	}
+
+	function handleLinkClick(event: MouseEvent, href: string) {
+		if (event.shiftKey || event.altKey || event.button !== 0) {
+			return;
+		}
+		event.preventDefault();
+		const open = async () => {
+			const tab = await getCurrentTab();
+			const modified = event.ctrlKey || event.metaKey;
+			if (modified || options.popup.newTab) {
+				const active = !modified && !options.popup.newtabInBg;
+				await browser.tabs.create({
+					url: href,
+					active,
+					...(!active && options.popup.newtabInBgAdjacent ? { index: tab.index + 1 } : {}),
+				});
+				if (active) {
+					window.close();
+				}
+			} else if (tab.id !== undefined) {
+				await browser.tabs.update(tab.id, { url: href });
+				window.close();
+			}
+		};
+		void open().catch(() => setMessage("Could not open that link. Please try again."));
+	}
+
 	return (
-		<div class="container mx-auto flex min-w-xl flex-col gap-y-2 bg-neutral-200 p-4 font-sans text-black antialiased dark:bg-neutral-800 dark:text-white">
-			<form class="flex flex-col gap-y-1">
-				<div class="flex overflow-hidden rounded-md shadow-md">
+		<main class="flex w-[580px] max-w-full flex-col gap-3 bg-neutral-200 p-4 text-black dark:bg-neutral-800 dark:text-white">
+			<form class="flex flex-col gap-2" onSubmit={submit}>
+				<div class="flex gap-2">
 					<input
-						class="flex-1 bg-neutral-300 p-2 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-neutral-700 dark:placeholder-neutral-400"
-						onInput={(e) => setUrlInput(e.currentTarget.value)}
-						placeholder="url to find..."
+						aria-label="Page URL"
+						class={`${control} min-w-0 flex-1 p-2`}
+						onInput={(event) => setInput(event.currentTarget.value)}
+						placeholder="https://example.com/article"
 						type="text"
-						value={urlInput()}
+						value={input()}
 					/>
 					<button
-						class="cursor-pointer bg-blue-600 px-4 py-2 font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none disabled:cursor-progress disabled:bg-blue-400 dark:disabled:bg-blue-800"
-						disabled={redditPosts.loading || hnPosts.loading}
-						onClick={() => {
-							const tab = tabId();
-							if (tab) {
-								void removeBadge(tab);
-							}
-							refetchReddit();
-							refetchHN();
-						}}
-						type="button"
+						class="cursor-pointer rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60"
+						disabled={loading()}
+						type="submit"
 					>
 						Search
 					</button>
+					<button
+						aria-label="Open settings"
+						class="cursor-pointer rounded-md p-2 hover:bg-neutral-300 dark:hover:bg-neutral-700"
+						onClick={() => {
+							void browser.runtime
+								.openOptionsPage()
+								.catch(() => setMessage("Could not open settings."));
+						}}
+						type="button"
+					>
+						<Settings height="1.5em" width="1.5em" />
+					</button>
 				</div>
-				<div class="flex items-center justify-between">
-					<div class="flex flex-col gap-y-1">
-						<Show when={ytChoiceVisible()}>
-							<div class="flex items-center">
-								<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-									<input
-										checked={options.value.search.ytHandling}
-										class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-										onChange={(e) =>
-											setOptions(
-												"value",
-												"search",
-												"ytHandling",
-												e.currentTarget.checked,
-											)
-										}
-										type="checkbox"
-									/>
-									<span class="ml-2">
-										search by video ID{" "}
-										<span class="font-bold text-neutral-900 dark:text-neutral-100">
-											'{ytVidIdDisplay()}'
-										</span>
-									</span>
-								</label>
-							</div>
-						</Show>
-
-						<Show when={searchOptionsVisibility()}>
-							<div class="flex items-center">
-								<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-									<input
-										checked={options.value.search.exactMatch}
-										class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-										onChange={(e) =>
-											setOptions(
-												"value",
-												"search",
-												"exactMatch",
-												e.currentTarget.checked,
-											)
-										}
-										type="checkbox"
-									/>
-									<span class="ml-2">exact match</span>
-								</label>
-							</div>
-							<div class="flex items-center">
-								<label class="inline-flex cursor-pointer items-center text-neutral-700 dark:text-neutral-300">
-									<input
-										checked={options.value.search.ignoreQs}
-										class="form-checkbox h-4 w-4 rounded border-neutral-500 bg-neutral-300 text-blue-600 focus:ring-blue-500 dark:border-neutral-500 dark:bg-neutral-600"
-										onChange={(e) =>
-											setOptions(
-												"value",
-												"search",
-												"ignoreQs",
-												e.currentTarget.checked,
-											)
-										}
-										type="checkbox"
-									/>
-									<span class="ml-2">ignore querystring</span>
-								</label>
-							</div>
-						</Show>
-					</div>
-					<a href="/options.html" rel="noopener noreferrer" target="_blank">
-						<Settings height={"1.5em"} width={"1.5em"} />
-					</a>
-				</div>
-			</form>
-			<div class="flex flex-col gap-y-2">
-				<div class="flex items-center justify-between text-neutral-600 text-sm dark:text-neutral-400">
-					<div class="flex items-center gap-x-2">
-						<select
-							class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-							onInput={(e) => {
-								batch(() => {
-									setOptions(
-										"value",
-										"search",
-										"sources",
-										"hackernews",
-										e.currentTarget.value === "all" ||
-											e.currentTarget.value === "hackernews",
-									);
-									setOptions(
-										"value",
-										"search",
-										"sources",
-										"reddit",
-										e.currentTarget.value === "all" ||
-											e.currentTarget.value === "reddit",
-									);
-								});
-							}}
-							value={source()}
-						>
-							<option value="all">All</option>
-							<option value="reddit">Reddit</option>
-							<option value="hackernews">Hacker News</option>
-						</select>
-						<span class="text-neutral-600 dark:text-neutral-400">sources</span>
-					</div>
-					<div class="flex items-center gap-x-2">
-						<span class="text-neutral-600 dark:text-neutral-400">sort</span>
-						<select
-							class="sort-options rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100"
-							onInput={(e) =>
-								setOptions(
-									"value",
-									"popup",
-									"results",
-									"orderBy",
-									e.currentTarget.value as OrderBy,
-								)
-							}
-							value={options.value.popup.results.orderBy}
-						>
-							<option value="score">score</option>
-							<option value="comments">comments</option>
-							<option value="age">age</option>
-							<option value="subreddit">subreddit</option>
-						</select>
-						<button
-							aria-label={`Sort ${options.value.popup.results.desc ? "ascending" : "descending"}`}
-							class="sort-order rounded-md border border-neutral-400 bg-neutral-300 px-2 py-1 text-neutral-900 transition-colors duration-200 hover:bg-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-600"
-							onClick={() =>
-								setOptions("value", "popup", "results", "desc", (desc) => !desc)
-							}
-							type="button"
-						>
-							<svg
-								class="size-4 transition-all"
-								classList={{
-									"-rotate-180": options.value.popup.results.desc,
-								}}
-								fill="currentColor"
-								viewBox="0 0 20 20"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<title>Change Sort Direction</title>
-								<path
-									clip-rule="evenodd"
-									d="M10 18a.75.75 0 01-.75-.75V4.66L7.3 6.95a.75.75 0 01-1.1-1.02l3.25-3.5a.75.75 0 011.1 0l3.25 3.5a.75.75 0 01-1.1 1.02L10.75 4.66v12.59c0 .41-.34.75-.75.75z"
-									fill-rule="evenodd"
-								/>
-							</svg>
-						</button>
-					</div>
-				</div>
-				<Switch>
-					<Match when={redditPosts.loading}>
-						<div>Loading Reddit posts...</div>
-					</Match>
-					<Match when={redditPosts.error}>
-						<div>Errored loading Reddit posts...</div>
-					</Match>
-				</Switch>
-				<Switch>
-					<Match when={hnPosts.loading}>
-						<div>Loading Hacker News posts...</div>
-					</Match>
-					<Match when={hnPosts.error}>
-						<div>Errored loading Hacker News posts...</div>
-					</Match>
-				</Switch>
-				<Show when={sortedResults().length !== 0}>
-					<div class="flex items-center gap-x-0.5">
-						<span class="font-semibold text-neutral-900 dark:text-neutral-300">
-							{sortedResults().length}{" "}
-							{pluralize("result", sortedResults().length)}
-						</span>
-						<Show when={options.value.search.sources.reddit}>
-							<span>|</span>
-							<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
-								{redditPosts.latest.length} <RedditIcon />
-								{pluralize("thread", redditPosts.latest.length)}
-							</span>
-						</Show>
-						<Show when={options.value.search.sources.hackernews}>
-							<span>|</span>
-							<span class="flex items-center gap-x-1 font-semibold text-neutral-900 dark:text-neutral-300">
-								{hnPosts.latest.length} <YCIcon class="rounded-sm" />
-								{pluralize("hit", hnPosts.latest.length)}
-							</span>
-						</Show>
-					</div>
-					<div class="flex flex-col gap-y-3">
-						<For each={sortedResults()}>
-							{(post) => (
-								<Switch>
-									<Match when={post.subreddit === HACKER_NEWS_SUBREDDIT}>
-										<HackerNewsResult
-											handleLinkClick={handleLinkClick}
-											post={post as ProcessedHackerNewsPost}
-										/>
-									</Match>
-									<Match when={post.subreddit !== HACKER_NEWS_SUBREDDIT}>
-										<RedditResult
-											handleLinkClick={handleLinkClick}
-											post={post}
-											redditURL={`https://${options.value.oldReddit ? "old." : ""}reddit.com`}
-										/>
-									</Match>
-								</Switch>
-							)}
-						</For>
+				<Show when={video().isYt}>
+					<label class="flex items-center gap-2">
+						<input
+							checked={options.search.ytHandling}
+							onChange={(event) => setOptions("search", "ytHandling", event.currentTarget.checked)}
+							type="checkbox"
+						/>
+						Search by YouTube video ID <code>{video().urlToSearch}</code>
+					</label>
+				</Show>
+				<Show when={!video().isYt || !options.search.ytHandling}>
+					<div class="flex gap-4">
+						<label class="flex items-center gap-2">
+							<input
+								checked={options.search.exactMatch}
+								onChange={(event) =>
+									setOptions("search", "exactMatch", event.currentTarget.checked)
+								}
+								type="checkbox"
+							/>
+							Exact match (Reddit)
+						</label>
+						<label class="flex items-center gap-2">
+							<input
+								checked={options.search.ignoreQs}
+								onChange={(event) => setOptions("search", "ignoreQs", event.currentTarget.checked)}
+								type="checkbox"
+							/>
+							Ignore query string
+						</label>
 					</div>
 				</Show>
+			</form>
+			<Show when={message()}>
+				<p role="alert">{message()}</p>
+			</Show>
+			<div class="flex items-center justify-between gap-2">
+				<label class="flex items-center gap-2">
+					Sources
+					<select
+						class={control}
+						onChange={(event) => {
+							const { value } = event.currentTarget;
+							setOptions("search", "sources", {
+								reddit: value !== "hackernews",
+								hackernews: value !== "reddit",
+							});
+						}}
+						value={source()}
+					>
+						<option value="all">All</option>
+						<option value="reddit">Reddit</option>
+						<option value="hackernews">Hacker News</option>
+					</select>
+				</label>
+				<div class="flex items-center gap-2">
+					<label class="flex items-center gap-2">
+						Sort
+						<select
+							class={control}
+							onChange={(event) =>
+								setOptions("popup", "results", "orderBy", orderBy(event.currentTarget.value))
+							}
+							value={options.popup.results.orderBy}
+						>
+							<option value="score">Score</option>
+							<option value="comments">Comments</option>
+							<option value="age">Age</option>
+							<option value="subreddit">Community</option>
+						</select>
+					</label>
+					<button
+						aria-label={`Sort ${options.popup.results.desc ? "ascending" : "descending"}`}
+						class={`${control} cursor-pointer`}
+						onClick={() => setOptions("popup", "results", "desc", (desc) => !desc)}
+						type="button"
+					>
+						{options.popup.results.desc ? "↓" : "↑"}
+					</button>
+				</div>
 			</div>
-		</div>
+			<div aria-live="polite" class="flex flex-col gap-2">
+				<Show when={options.search.sources.reddit && reddit.loading}>
+					<output>Loading Reddit discussions…</output>
+				</Show>
+				<Show when={options.search.sources.hackernews && hackernews.loading}>
+					<output>Loading Hacker News discussions…</output>
+				</Show>
+				<For each={problems()}>
+					{(problem) => (
+						<p
+							class="rounded-md bg-amber-100 p-2 text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+							role="alert"
+						>
+							{problem}
+						</p>
+					)}
+				</For>
+				<Show
+					when={options.search.sources.reddit && !reddit.loading && reddit().via === "arctic-shift"}
+				>
+					<p class="rounded-md bg-blue-100 p-2 text-blue-950 dark:bg-blue-950 dark:text-blue-100">
+						Archived Reddit results via{" "}
+						<a
+							href="https://arctic-shift.photon-reddit.com/"
+							class="underline"
+							rel="noopener noreferrer"
+							target="_blank"
+						>
+							Arctic Shift
+						</a>
+						. Coverage, scores and comment counts may be incomplete or outdated. Sign in to Reddit
+						and press Search to retry live results.
+					</p>
+				</Show>
+				<Show
+					when={
+						options.search.sources.reddit &&
+						!reddit.loading &&
+						(reddit().error || reddit().warning || reddit().via === "arctic-shift")
+					}
+				>
+					<a
+						class="text-blue-700 underline dark:text-blue-300"
+						href="https://old.reddit.com/"
+						onClick={(event) => handleLinkClick(event, "https://old.reddit.com/")}
+						rel="noopener noreferrer"
+						target="_blank"
+					>
+						Open Reddit
+					</a>
+				</Show>
+				<Show when={results().length > 0}>
+					<p class="font-semibold">
+						{results().length} {pluralize("discussion", results().length)}
+					</p>
+				</Show>
+				<Show
+					when={
+						ready() &&
+						parseHttpUrl(query()) &&
+						!loading() &&
+						!problems().length &&
+						!results().length
+					}
+				>
+					<p>No discussions found for this URL.</p>
+				</Show>
+			</div>
+			<div class="flex flex-col gap-3">
+				<For each={results()}>
+					{(post) => (
+						<Result post={post} oldReddit={options.oldReddit} handleLinkClick={handleLinkClick} />
+					)}
+				</For>
+			</div>
+		</main>
 	);
 }
